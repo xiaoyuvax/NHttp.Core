@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -18,7 +19,7 @@ namespace NHttp
 
         private bool _disposed;
         private readonly byte[] _writeBuffer;
-        private NetworkStream _stream;
+        private Stream _stream;
         private ClientState _state;
         private MemoryStream _writeStream;
         private HttpRequestParser _parser;
@@ -58,7 +59,16 @@ namespace NHttp
             ReadBuffer = new HttpReadBuffer(server.ReadBufferSize);
             _writeBuffer = new byte[server.WriteBufferSize];
 
-            _stream = client.GetStream();
+            if (server.ServerCertificate == null)
+            {
+                _stream = client.GetStream();
+
+            }
+            else
+            {
+                _stream = new SslStream(client.GetStream(), false);
+                ((SslStream)_stream).AuthenticateAsServer(server.ServerCertificate, server.ClientCertificateRequire, server.AllowedSslProtocols, true);
+            }
         }
 
         private void Reset()
