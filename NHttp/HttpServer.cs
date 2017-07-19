@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
+using System.Security.Authentication;
 
 namespace NHttp
 {
@@ -18,6 +20,13 @@ namespace NHttp
         private readonly Dictionary<HttpClient, bool> _clients = new Dictionary<HttpClient, bool>();
         private HttpServerState _state = HttpServerState.Stopped;
         private AutoResetEvent _clientsChangedEvent = new AutoResetEvent(false);
+
+        public X509Certificate ServerCertificate { get; set; }
+
+        public bool ClientCertificateRequire { get; set; } = false;
+
+        public SslProtocols AllowedSslProtocols { get; set; } = SslProtocols.Default;
+
 
         public HttpServerState State
         {
