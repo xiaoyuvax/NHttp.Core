@@ -56,9 +56,8 @@ namespace NHttp
                 if (value != null)
                 {
                     string[] parts = value.Split(new[] { ' ' }, 2);
-                    int statusCode;
 
-                    if (int.TryParse(parts[0], out statusCode))
+                    if (int.TryParse(parts[0], out int statusCode))
                     {
                         StatusCode = statusCode;
 

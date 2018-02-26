@@ -4,8 +4,10 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -65,8 +67,15 @@ namespace NHttp
             }
             else
             {
-                _stream = new SslStream(client.GetStream(), false);
-                ((SslStream)_stream).AuthenticateAsServer(server.ServerCertificate, server.ClientCertificateRequire, server.AllowedSslProtocols, true);
+                try
+                {
+                    _stream = new SslStream(client.GetStream(), false);
+                    ((SslStream)_stream).AuthenticateAsServer(server.ServerCertificate, server.ClientCertificateRequire, server.AllowedSslProtocols, true);
+                    ServicePointManager.ServerCertificateValidationCallback = delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) { return true; };
+                }
+                catch (Exception ex)
+                {
+                }
             }
         }
 
@@ -318,9 +327,7 @@ namespace NHttp
 
             if (Headers.TryGetValue("Content-Length", out contentLengthHeader))
             {
-                int contentLength;
-
-                if (!int.TryParse(contentLengthHeader, out contentLength))
+                if (!int.TryParse(contentLengthHeader, out int contentLength))
                     throw new ProtocolException(String.Format("Could not parse Content-Length header '{0}'", contentLengthHeader));
 
                 string contentTypeHeader;

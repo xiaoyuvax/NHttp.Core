@@ -312,7 +312,7 @@ namespace NHttp
 
             lock (_syncLock)
             {
-                Debug.Assert(_clients.ContainsKey(client));
+                //Debug.Assert(_clients.ContainsKey(client));
 
                 _clients.Remove(client);
 

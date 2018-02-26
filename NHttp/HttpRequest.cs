@@ -126,9 +126,8 @@ namespace NHttp
 
             if (client.Headers.TryGetValue("Content-Length", out header))
             {
-                int contentLength;
 
-                if (int.TryParse(header, out contentLength))
+                if (int.TryParse(header, out int contentLength))
                     ContentLength = contentLength;
             }
 
@@ -248,7 +247,7 @@ namespace NHttp
 
             QueryString = new NameValueCollection();
             if (parts.Length == 2)
-                 HttpUtil.UrlDecodeTo(parts[1], QueryString);
+                HttpUtil.UrlDecodeTo(parts[1], QueryString);
 
             string host;
             string port;
@@ -270,7 +269,7 @@ namespace NHttp
                 var endPoint = client.Server.EndPoint;
 
                 host = endPoint.Address.ToString();
-                
+
                 if (endPoint.Port == 80)
                     port = null;
                 else
