@@ -467,7 +467,7 @@ namespace NHttp
                             break;
 
                         default:
-                            Debug.Assert(_state != ClientState.Closed);
+                            //Debug.Assert(_state != ClientState.Closed);
 
                             if (ReadBuffer.DataAvailable)
                             {
@@ -640,7 +640,7 @@ namespace NHttp
 
         public void UnsetParser()
         {
-            Debug.Assert(_parser != null);
+            //Debug.Assert(_parser != null);
 
             _parser = null;
         }

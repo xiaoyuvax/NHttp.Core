@@ -192,7 +192,7 @@ namespace NHttp
 
                     // The more and end boundaries have the same length.
 
-                    Debug.Assert(atEnd.HasValue);
+                    //Debug.Assert(atEnd.HasValue);
 
                     if (!atEnd.Value)
                         throw new ProtocolException("Unexpected content after boundary");
