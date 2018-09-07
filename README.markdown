@@ -1,4 +1,5 @@
-# NHttp
+# NHttp.Core
+This is a core version of NHttp with SSL support forked from the original base.
 
 LGPL License.
 
@@ -21,6 +22,9 @@ NHttp supports the following features:
 * Complete multi-part parsing including file upload (i.e. multipart/form-data);
 
 * Support for parsing and sending cookies.
+
+* Support Https protocol & SSL.
+
 
 NHttp specifically does **not** support any kind of utilities producing output.
 It for example does not provide a StreamWriter or perform routing. Besides e.g.
@@ -80,7 +84,7 @@ version doesn't matter) to your project.
 ## Bugs
 
 Bugs should be reported through github at
-[http://github.com/pvginkel/NHttp/issues](http://github.com/pvginkel/NHttp/issues).
+[https://github.com/xiaoyuvax/NHttp.Core/issues](https://github.com/xiaoyuvax/NHttp.Core/issues).
 
 ## License
 
