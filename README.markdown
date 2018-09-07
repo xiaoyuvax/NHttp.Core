@@ -23,6 +23,9 @@ NHttp supports the following features:
 
 * Support for parsing and sending cookies.
 
+* Support Https protocol & SSL.
+
+
 NHttp specifically does **not** support any kind of utilities producing output.
 It for example does not provide a StreamWriter or perform routing. Besides e.g.
 the Headers and Cookies collections, only the raw output stream is provided.
