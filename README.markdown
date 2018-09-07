@@ -1,4 +1,5 @@
-# NHttp
+# NHttp.Core
+This is a core version of NHttp with SSL support forked from the original base.
 
 LGPL License.
 
