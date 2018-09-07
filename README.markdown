@@ -81,7 +81,7 @@ version doesn't matter) to your project.
 ## Bugs
 
 Bugs should be reported through github at
-[http://github.com/pvginkel/NHttp/issues](http://github.com/pvginkel/NHttp/issues).
+[https://github.com/xiaoyuvax/NHttp.Core/issues](https://github.com/xiaoyuvax/NHttp.Core/issues).
 
 ## License
 
