@@ -9,3 +9,5 @@ Thumbs.db
 *.nupkg
 /packages
 /.vs
+bin
+obj

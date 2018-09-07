@@ -1,0 +1,3 @@
+[submodule "WMLogService.Core"]
+	path = WMLogService.Core
+	url = https://github.com/xiaoyuvax/WMLogService.Core
