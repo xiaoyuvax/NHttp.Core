@@ -49,6 +49,8 @@ namespace NHttp
 
         public Stream InputStream { get; set; }
 
+        public bool IsHttps => _stream is SslStream;
+
         public HttpClient(HttpServer server, TcpClient client)
         {
             if (server == null)

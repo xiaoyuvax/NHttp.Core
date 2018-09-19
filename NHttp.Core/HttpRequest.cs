@@ -280,7 +280,9 @@ namespace NHttp
 
             var sb = new StringBuilder();
 
-            sb.Append("http://");
+            if (client.IsHttps) sb.Append("https://");
+            else sb.Append("http://");
+
             sb.Append(host);
 
             if (port != null)
