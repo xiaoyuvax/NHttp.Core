@@ -3,8 +3,6 @@ This is a core version of NHttp with SSL support forked from the original base.
 
 LGPL License.
 
-[Download from NuGet](http://nuget.org/packages/NHttp).
-
 ## Introduction
 
 NHttp is a simple asynchronous HTTP server written in C# for the .NET framework.
