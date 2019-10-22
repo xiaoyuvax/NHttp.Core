@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -117,8 +118,7 @@ namespace NHttp
             {
                 foreach (var item in MultiPartItems)
                 {
-                    if (item.Stream != null)
-                        item.Stream.Dispose();
+                    if (item.Stream != null) item.Stream.Dispose();
                 }
 
                 MultiPartItems = null;
@@ -134,36 +134,31 @@ namespace NHttp
 
         private void BeginRead()
         {
-            if (_disposed)
-                return;
+            if (_disposed) return;
 
             try
             {
-                Server.TimeoutManager.ReadQueue.Add(
-                    ReadBuffer.BeginRead(_stream, ReadCallback, null),
-                    this
-                );
+                if (_stream != null && _stream.CanRead)
+                {
+                    IAsyncResult ar = ReadBuffer.BeginRead(_stream, ReadCallback, new object());
+                    if (ar != null) Server.TimeoutManager.ReadQueue.Add(ar, this);
+                }
             }
             catch (Exception ex)
             {
-                Log.Info("BeginRead failed", ex);
-
+                Log.Info(ReadBuffer.GetHashCode() + "\tBeginRead failed - ", ex);
                 Dispose();
             }
         }
 
         private void ReadCallback(IAsyncResult asyncResult)
         {
-            if (_disposed)
-                return;
+            if (_disposed) return;
 
             // The below state matches the RequestClose state. Dispose immediately
             // when this occurs.
 
-            if (
-                _state == ClientState.ReadingProlog &&
-                Server.State != HttpServerState.Started
-            )
+            if (_state == ClientState.ReadingProlog && Server.State != HttpServerState.Started)
             {
                 Dispose();
                 return;
@@ -173,10 +168,8 @@ namespace NHttp
             {
                 ReadBuffer.EndRead(_stream, asyncResult);
 
-                if (ReadBuffer.DataAvailable)
-                    ProcessReadBuffer();
-                else
-                    Dispose();
+                if (ReadBuffer.DataAvailable) ProcessReadBuffer();
+                else Dispose();
             }
             catch (ObjectDisposedException ex)
             {
@@ -186,7 +179,7 @@ namespace NHttp
             }
             catch (Exception ex)
             {
-                Log.Info("Failed to read from the HTTP connection", ex);
+                Log.Info(ReadBuffer.GetHashCode() + "\tFailed to read from the HTTP connection - ", ex);
 
                 ProcessException(ex);
             }
@@ -223,15 +216,13 @@ namespace NHttp
         {
             string line = ReadBuffer.ReadLine();
 
-            if (line == null)
-                return;
+            if (line == null) return;
 
             // Parse the prolog.
 
             var match = PrologRegex.Match(line);
 
-            if (!match.Success)
-                throw new ProtocolException(String.Format("Could not parse prolog '{0}'", line));
+            if (!match.Success) throw new ProtocolException(String.Format("Could not parse prolog '{0}'", line));
 
             Method = match.Groups[1].Value;
             Request = match.Groups[2].Value;
@@ -417,6 +408,7 @@ namespace NHttp
 
         private void BeginWrite()
         {
+            if (_disposed) return;
             try
             {
                 // Copy the next part from the write stream.
@@ -438,8 +430,7 @@ namespace NHttp
 
         private void WriteCallback(IAsyncResult asyncResult)
         {
-            if (_disposed)
-                return;
+            if (_disposed) return;
 
             try
             {
@@ -470,7 +461,7 @@ namespace NHttp
                             break;
 
                         default:
-                            //Debug.Assert(_state != ClientState.Closed);
+                            Debug.Assert(_state != ClientState.Closed);
 
                             if (ReadBuffer.DataAvailable)
                             {
@@ -526,6 +517,7 @@ namespace NHttp
 
         private byte[] BuildResponseHeaders()
         {
+            Debug.Assert(_context != null);
             var response = _context.Response;
             var sb = new StringBuilder();
 
@@ -650,8 +642,7 @@ namespace NHttp
 
         private void ProcessException(Exception exception)
         {
-            if (_disposed)
-                return;
+            if (_disposed) return;
 
             _errored = true;
 
@@ -673,7 +664,6 @@ namespace NHttp
                 _context.Response.Status = "500 Internal Server Error";
 
                 bool handled;
-
                 try
                 {
                     handled = Server.RaiseUnhandledException(_context, exception);
@@ -685,10 +675,11 @@ namespace NHttp
 
                 if (!handled && _context.Response.OutputStream.CanWrite)
                 {
-                    string resourceName = GetType().Namespace + ".Resources.InternalServerError.html";
 
+                    string resourceName = GetType().Namespace + ".Resources.InternalServerError.html";
                     using (var stream = GetType().Assembly.GetManifestResourceStream(resourceName))
                     {
+
                         byte[] buffer = new byte[4096];
                         int read;
 
@@ -713,6 +704,8 @@ namespace NHttp
         {
             if (!_disposed)
             {
+                _disposed = true;
+
                 Server.UnregisterClient(this);
 
                 _state = ClientState.Closed;
@@ -731,7 +724,7 @@ namespace NHttp
 
                 Reset();
 
-                _disposed = true;
+
             }
         }
 

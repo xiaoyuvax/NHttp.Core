@@ -308,7 +308,7 @@ namespace NHttp
         public override void Write(byte[] buffer, int offset, int count)
         {
             CheckClosed();
-            stream.Write(buffer, offset, count);
+            if (this.CanWrite) stream.Write(buffer, offset, count);
         }
 
         /// <summary>

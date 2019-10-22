@@ -1,5 +1,6 @@
 ﻿using Common.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -17,7 +18,7 @@ namespace NHttp
         private bool _disposed;
         private TcpListener _listener;
         private readonly object _syncLock = new object();
-        private readonly Dictionary<HttpClient, bool> _clients = new Dictionary<HttpClient, bool>();
+        private readonly ConcurrentDictionary<HttpClient, bool> _clients = new ConcurrentDictionary<HttpClient, bool>();
         private HttpServerState _state = HttpServerState.Stopped;
         private AutoResetEvent _clientsChangedEvent = new AutoResetEvent(false);
 
@@ -249,24 +250,23 @@ namespace NHttp
 
         private void BeginAcceptTcpClient()
         {
-            var listener = _listener;
-            if (listener != null)
-                listener.BeginAcceptTcpClient(AcceptTcpClientCallback, null);
+
+            if (_listener != null)
+            {
+                _listener.BeginAcceptTcpClient(AcceptTcpClientCallback, null);
+            }
         }
 
         private void AcceptTcpClientCallback(IAsyncResult asyncResult)
         {
             try
-            {
-                var listener = _listener; // Prevent race condition.
+            {                
 
-                if (listener == null)
-                    return;
+                if (_listener == null) return;
 
-                var tcpClient = listener.EndAcceptTcpClient(asyncResult);
+                var tcpClient = _listener.EndAcceptTcpClient(asyncResult);
 
                 // If we've stopped already, close the TCP client now.
-
                 if (_state != HttpServerState.Started)
                 {
                     tcpClient.Close();
@@ -276,10 +276,8 @@ namespace NHttp
                 var client = new HttpClient(this, tcpClient);
 
                 RegisterClient(client);
-
                 client.BeginRequest();
 
-                BeginAcceptTcpClient();
             }
             catch (ObjectDisposedException)
             {
@@ -289,35 +287,23 @@ namespace NHttp
             catch (Exception ex)
             {
                 Log.Info("Failed to accept TCP client", ex);
+
             }
+            if (!_disposed && _state == HttpServerState.Started) BeginAcceptTcpClient();
         }
 
         private void RegisterClient(HttpClient client)
         {
-            if (client == null)
-                throw new ArgumentNullException("client");
-
-            lock (_syncLock)
-            {
-                _clients.Add(client, true);
-
-                _clientsChangedEvent.Set();
-            }
+            if (client == null) throw new ArgumentNullException("client");
+            else if (_clients.TryAdd(client, true)) _clientsChangedEvent.Set();
         }
+
 
         internal void UnregisterClient(HttpClient client)
         {
-            if (client == null)
-                throw new ArgumentNullException("client");
+            if (client == null) throw new ArgumentNullException("client");
+            else if (_clients.TryRemove(client, out bool v)) _clientsChangedEvent.Set();
 
-            lock (_syncLock)
-            {
-                //Debug.Assert(_clients.ContainsKey(client));
-
-                _clients.Remove(client);
-
-                _clientsChangedEvent.Set();
-            }
         }
 
         private void VerifyState(HttpServerState state)

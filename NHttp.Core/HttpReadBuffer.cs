@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace NHttp
 {
@@ -14,6 +16,7 @@ namespace NHttp
         private byte[] _buffer;
         private int _available;
         private bool _forceNewRead;
+        private readonly object bufferLock = new object();
 
         public bool DataAvailable
         {
@@ -214,15 +217,22 @@ namespace NHttp
             // resizing too much.
 
             int bufferAvailable = Math.Min(_buffer.Length - _available, _bufferSize);
+            IAsyncResult ar = null;
 
-            return stream.BeginRead(_buffer, _available, bufferAvailable, callback, state);
+            lock (bufferLock)
+            {
+                if (stream != null && stream.CanRead) ar = stream.BeginRead(_buffer, _available, bufferAvailable, callback, state);
+            }
+            return ar;
+
         }
 
         public void EndRead(Stream stream, IAsyncResult asyncResult)
         {
-            int read = stream.EndRead(asyncResult);
-
-            _available += read;
+            _available += stream.EndRead(asyncResult);
         }
+
+
+
     }
 }

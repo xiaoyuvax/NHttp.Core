@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>NHttp</RootNamespace>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -11,6 +12,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <LangVersion>7.1</LangVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\InternalServerError.html" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\InternalServerError.html" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Common.Logging.Core" Version="3.4.1" />

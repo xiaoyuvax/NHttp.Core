@@ -41,8 +41,7 @@ namespace NHttp
             while (true)
             {
                 var item = queue.DequeueExpired();
-                if (item == null)
-                    return;
+                if (item == null) return;
 
                 if (!item.AsyncResult.IsCompleted)
                 {
