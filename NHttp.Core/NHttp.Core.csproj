@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>NHttp</RootNamespace>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -26,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\WMLogService.Core\Wima.LogService.Core.csproj" />
+    <ProjectReference Include="..\WMLogService.Core\Wima.LogService.csproj" />
   </ItemGroup>
 
 </Project>
