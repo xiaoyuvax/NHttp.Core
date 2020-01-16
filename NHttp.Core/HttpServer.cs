@@ -106,7 +106,7 @@ namespace NHttp
 
         public void Start()
         {
-            VerifyState(HttpServerState.Stopped);
+            if (!VerifyState(HttpServerState.Stopped)) return;
 
             State = HttpServerState.Starting;
 
@@ -146,7 +146,7 @@ namespace NHttp
 
         public void Stop()
         {
-            VerifyState(HttpServerState.Started);
+            if (!VerifyState(HttpServerState.Started)) return;
 
             Log.Debug("Stopping HTTP server");
 
@@ -260,7 +260,7 @@ namespace NHttp
         private void AcceptTcpClientCallback(IAsyncResult asyncResult)
         {
             try
-            {                
+            {
 
                 if (_listener == null) return;
 
@@ -306,13 +306,7 @@ namespace NHttp
 
         }
 
-        private void VerifyState(HttpServerState state)
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(GetType().Name);
-            if (_state != state)
-                throw new InvalidOperationException(String.Format("Expected server to be in the '{0}' state", state));
-        }
+        private bool VerifyState(HttpServerState state) => !_disposed && _state == state;
 
         public void Dispose()
         {
