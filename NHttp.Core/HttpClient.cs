@@ -77,9 +77,7 @@ namespace NHttp
                     ((SslStream)_stream).AuthenticateAsServer(server.ServerCertificate, server.ClientCertificateRequire, server.AllowedSslProtocols, true);
                     ServicePointManager.ServerCertificateValidationCallback = delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) { return true; };
                 }
-                catch (Exception ex)
-                {
-                }
+                catch (Exception ex) { Log.Debug(ex); }
             }
         }
 
