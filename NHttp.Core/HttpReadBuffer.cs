@@ -16,7 +16,6 @@ namespace NHttp
         private byte[] _buffer;
         private int _available;
         private bool _forceNewRead;
-        private readonly object bufferLock = new object();
 
         public bool DataAvailable
         {
@@ -219,7 +218,8 @@ namespace NHttp
             int bufferAvailable = Math.Min(_buffer.Length - _available, _bufferSize);
             IAsyncResult ar = null;
 
-            lock (bufferLock)
+
+            lock (stream)
             {
                 if (stream != null && stream.CanRead) ar = stream.BeginRead(_buffer, _available, bufferAvailable, callback, state);
             }
