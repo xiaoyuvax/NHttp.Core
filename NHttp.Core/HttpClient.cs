@@ -5,10 +5,8 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 using Wima.Log;
@@ -672,11 +670,9 @@ namespace NHttp
 
                 if (!handled && _context.Response.OutputStream.CanWrite)
                 {
-
                     string resourceName = GetType().Namespace + ".Resources.InternalServerError.html";
                     using (var stream = GetType().Assembly.GetManifestResourceStream(resourceName))
                     {
-
                         byte[] buffer = new byte[4096];
                         int read;
 
@@ -720,8 +716,6 @@ namespace NHttp
                 }
 
                 Reset();
-
-
             }
         }
 

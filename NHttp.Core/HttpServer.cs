@@ -28,7 +28,6 @@ namespace NHttp
 
         public SslProtocols AllowedSslProtocols { get; set; } = SslProtocols.Default;
 
-
         public HttpServerState State
         {
             get { return _state; }
@@ -250,7 +249,6 @@ namespace NHttp
 
         private void BeginAcceptTcpClient()
         {
-
             if (_listener != null)
             {
                 _listener.BeginAcceptTcpClient(AcceptTcpClientCallback, null);
@@ -261,7 +259,6 @@ namespace NHttp
         {
             try
             {
-
                 if (_listener == null) return;
 
                 var tcpClient = _listener.EndAcceptTcpClient(asyncResult);
@@ -277,7 +274,6 @@ namespace NHttp
 
                 RegisterClient(client);
                 client.BeginRequest();
-
             }
             catch (ObjectDisposedException)
             {
@@ -287,7 +283,6 @@ namespace NHttp
             catch (Exception ex)
             {
                 Log.Info("Failed to accept TCP client", ex);
-
             }
             if (!_disposed && _state == HttpServerState.Started) BeginAcceptTcpClient();
         }
@@ -298,12 +293,10 @@ namespace NHttp
             else if (_clients.TryAdd(client, true)) _clientsChangedEvent.Set();
         }
 
-
         internal void UnregisterClient(HttpClient client)
         {
             if (client == null) throw new ArgumentNullException("client");
             else if (_clients.TryRemove(client, out bool v)) _clientsChangedEvent.Set();
-
         }
 
         private bool VerifyState(HttpServerState state) => !_disposed && _state == state;

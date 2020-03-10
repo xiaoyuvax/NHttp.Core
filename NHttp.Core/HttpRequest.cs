@@ -128,7 +128,6 @@ namespace NHttp
 
             if (client.Headers.TryGetValue("Content-Length", out header))
             {
-
                 if (int.TryParse(header, out int contentLength))
                     ContentLength = contentLength;
             }

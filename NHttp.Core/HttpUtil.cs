@@ -117,7 +117,8 @@ namespace NHttp
                     i < value.Length - 2 &&
                     IsHex(value[i + 1]) &&
                     IsHex(value[i + 2])
-                ) {
+                )
+                {
                     result[length++] = (byte)(HexToInt(value[i + 1]) * 16 + HexToInt(value[i + 2]));
 
                     i += 2;
