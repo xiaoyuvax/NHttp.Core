@@ -9,6 +9,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Wima.Log;
 
 namespace NHttp
@@ -63,15 +64,13 @@ namespace NHttp
             ReadBuffer = new HttpReadBuffer(server.ReadBufferSize);
             _writeBuffer = new byte[server.WriteBufferSize];
 
-            if (server.ServerCertificate == null)
-            {
-                _stream = client.GetStream();
-            }
-            else
+            _stream = client.GetStream();
+
+            if (server.ServerCertificate != null)
             {
                 try
                 {
-                    _stream = new SslStream(client.GetStream(), false);
+                    _stream = new SslStream(_stream, false);
                     ((SslStream)_stream).AuthenticateAsServer(server.ServerCertificate, server.ClientCertificateRequire, server.AllowedSslProtocols, true);
                 }
                 catch (Exception ex) { Log.Debug(ex); }
@@ -127,7 +126,8 @@ namespace NHttp
             BeginRead();
         }
 
-        private void BeginRead()
+        [Obsolete]
+        private void BeginReadOld()
         {
             if (_disposed) return;
 
@@ -146,6 +146,29 @@ namespace NHttp
             }
         }
 
+
+        private void BeginRead()
+        {
+            if (_disposed) return;
+
+            try
+            {
+                if (_stream != null && _stream.CanRead)
+                {
+                    Task<int> ar = ReadBuffer.ReadAsync(_stream);
+                    ar.ContinueWith(t => ReadCallback(t));
+                    if (ar != null) Server.TimeoutManager.ReadQueue.Add(ar, this);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Info(ReadBuffer.GetHashCode() + "\tReadAsync failed - ", ex);
+                Dispose();
+            }
+        }
+
+
+
         private void ReadCallback(IAsyncResult asyncResult)
         {
             if (_disposed) return;
@@ -162,7 +185,6 @@ namespace NHttp
             try
             {
                 ReadBuffer.EndRead(_stream, asyncResult);
-
                 if (ReadBuffer.DataAvailable) ProcessReadBuffer();
                 else Dispose();
             }
@@ -203,8 +225,7 @@ namespace NHttp
                 }
             }
 
-            if (_writeStream == null)
-                BeginRead();
+            if (_writeStream == null) BeginRead();
         }
 
         private void ProcessProlog()
@@ -217,7 +238,7 @@ namespace NHttp
 
             var match = PrologRegex.Match(line);
 
-            if (!match.Success) throw new ProtocolException(String.Format("Could not parse prolog '{0}'", line));
+            if (!match.Success) throw new ProtocolException(string.Format("Could not parse prolog '{0}'", line));
 
             Method = match.Groups[1].Value;
             Request = match.Groups[2].Value;
@@ -298,8 +319,8 @@ namespace NHttp
                 if (pos != -1)
                     expectHeader = expectHeader.Substring(0, pos).Trim();
 
-                if (!String.Equals("100-continue", expectHeader, StringComparison.OrdinalIgnoreCase))
-                    throw new ProtocolException(String.Format("Could not process Expect header '{0}'", expectHeader));
+                if (!string.Equals("100-continue", expectHeader, StringComparison.OrdinalIgnoreCase))
+                    throw new ProtocolException(string.Format("Could not process Expect header '{0}'", expectHeader));
 
                 SendContinueResponse();
                 return true;
@@ -317,7 +338,7 @@ namespace NHttp
             if (Headers.TryGetValue("Content-Length", out contentLengthHeader))
             {
                 if (!int.TryParse(contentLengthHeader, out int contentLength))
-                    throw new ProtocolException(String.Format("Could not parse Content-Length header '{0}'", contentLengthHeader));
+                    throw new ProtocolException(string.Format("Could not parse Content-Length header '{0}'", contentLengthHeader));
 
                 string contentTypeHeader;
                 string contentType = null;
@@ -352,7 +373,7 @@ namespace NHttp
 
                             if (
                                 parts.Length == 2 &&
-                                String.Equals(parts[0], "boundary", StringComparison.OrdinalIgnoreCase)
+                                string.Equals(parts[0], "boundary", StringComparison.OrdinalIgnoreCase)
                             )
                                 boundary = parts[1];
                         }
@@ -407,7 +428,6 @@ namespace NHttp
             try
             {
                 // Copy the next part from the write stream.
-
                 int read = _writeStream.Read(_writeBuffer, 0, _writeBuffer.Length);
 
                 Server.TimeoutManager.WriteQueue.Add(
@@ -489,7 +509,7 @@ namespace NHttp
         {
             _context = new HttpContext(this);
 
-            Log.Debug(String.Format("Accepted request '{0}'", _context.Request.RawUrl));
+            Log.Debug(string.Format("Accepted request '{0}'", _context.Request.RawUrl));
 
             Server.RaiseRequest(_context);
 
@@ -522,7 +542,7 @@ namespace NHttp
             sb.Append(' ');
             sb.Append(response.StatusCode);
 
-            if (!String.IsNullOrEmpty(response.StatusDescription))
+            if (!string.IsNullOrEmpty(response.StatusDescription))
             {
                 sb.Append(' ');
                 sb.Append(response.StatusDescription);
@@ -532,14 +552,14 @@ namespace NHttp
 
             // Write all headers provided by Response.
 
-            if (!String.IsNullOrEmpty(response.CacheControl))
+            if (!string.IsNullOrEmpty(response.CacheControl))
                 WriteHeader(sb, "Cache-Control", response.CacheControl);
 
-            if (!String.IsNullOrEmpty(response.ContentType))
+            if (!string.IsNullOrEmpty(response.ContentType))
             {
                 string contentType = response.ContentType;
 
-                if (!String.IsNullOrEmpty(response.CharSet))
+                if (!string.IsNullOrEmpty(response.CharSet))
                     contentType += "; charset=" + response.CharSet;
 
                 WriteHeader(sb, "Content-Type", contentType);
@@ -547,7 +567,7 @@ namespace NHttp
 
             WriteHeader(sb, "Expires", response.ExpiresAbsolute.ToString("R"));
 
-            if (!String.IsNullOrEmpty(response.RedirectLocation))
+            if (!string.IsNullOrEmpty(response.RedirectLocation))
                 WriteHeader(sb, "Location", response.RedirectLocation);
 
             // Write the remainder of the headers.
@@ -602,7 +622,7 @@ namespace NHttp
                 !_errored &&
                 Server.State == HttpServerState.Started &&
                 Headers.TryGetValue("Connection", out connectionHeader) &&
-                String.Equals(connectionHeader, "keep-alive", StringComparison.OrdinalIgnoreCase)
+                string.Equals(connectionHeader, "keep-alive", StringComparison.OrdinalIgnoreCase)
             )
                 BeginRequest();
             else
@@ -611,22 +631,10 @@ namespace NHttp
 
         public void RequestClose()
         {
-            if (_state == ClientState.ReadingProlog)
-            {
-                var stream = _stream;
-
-                if (stream != null)
-                    stream.Dispose();
-            }
+            if (_state == ClientState.ReadingProlog) _stream.Dispose();
         }
 
-        public void ForceClose()
-        {
-            var stream = _stream;
-
-            if (stream != null)
-                stream.Dispose();
-        }
+        public void ForceClose() => _stream?.Dispose();
 
         public void UnsetParser()
         {

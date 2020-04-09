@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
 
@@ -47,10 +47,7 @@ namespace NHttp
                     {
                         item.Disposable.Dispose();
                     }
-                    catch
-                    {
-                        // Ignore exceptions.
-                    }
+                    catch { }
                 }
             }
         }
@@ -72,10 +69,9 @@ namespace NHttp
 
         public class TimeoutQueue
         {
-            private readonly object _syncRoot = new object();
             private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
             private readonly long _timeout;
-            private readonly Queue<TimeoutItem> _items = new Queue<TimeoutItem>();
+            private readonly ConcurrentQueue<TimeoutItem> _items = new ConcurrentQueue<TimeoutItem>();
 
             public TimeoutQueue(TimeSpan timeout)
             {
@@ -89,25 +85,20 @@ namespace NHttp
                 if (disposable == null)
                     throw new ArgumentNullException(nameof(disposable));
 
-                lock (_syncRoot)
-                {
-                    _items.Enqueue(new TimeoutItem(_stopwatch.ElapsedTicks + _timeout, asyncResult, disposable));
-                }
+                _items.Enqueue(new TimeoutItem(_stopwatch.ElapsedTicks + _timeout, asyncResult, disposable));
             }
 
             public TimeoutItem DequeueExpired()
             {
-                lock (_syncRoot)
+                if (_items.Count == 0) return null;
+
+                _items.TryPeek(out TimeoutItem item);
+                if (item.Expires < _stopwatch.ElapsedTicks)
                 {
-                    if (_items.Count == 0)
-                        return null;
-
-                    var item = _items.Peek();
-                    if (item.Expires < _stopwatch.ElapsedTicks)
-                        return _items.Dequeue();
-
-                    return null;
+                    if (_items.TryDequeue(out TimeoutItem removedItem)) return removedItem;
                 }
+
+                return null;
             }
         }
 

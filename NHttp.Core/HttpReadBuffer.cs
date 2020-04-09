@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace NHttp
 {
@@ -162,6 +163,7 @@ namespace NHttp
             return true;
         }
 
+        [Obsolete]
         public IAsyncResult BeginRead(Stream stream, AsyncCallback callback, object state)
         {
             // A new read was requested. Reset the flag.
@@ -222,9 +224,72 @@ namespace NHttp
             return ar;
         }
 
+
+
+        public Task<int> ReadAsync(Stream stream)
+        {
+            // A new read was requested. Reset the flag.
+
+            _forceNewRead = false;
+
+            if (_offset == _available)
+            {
+                // If the offset is at the end, we can just reset the
+                // positions.
+
+                _offset = 0;
+                _available = 0;
+            }
+            else if (_buffer.Length - _available < _bufferSize)
+            {
+                // If there is less than the initial buffer size room left,
+                // we need to move some data.
+
+                if (_buffer.Length - (_available - _offset) < _bufferSize)
+                {
+                    // If the available size is less than the initial buffer size,
+                    // enlarge the buffer.
+
+                    var buffer = new byte[_buffer.Length * 2];
+
+                    // Copy the unprocessed bytes to the start of the new buffer.
+
+                    Array.Copy(_buffer, _offset, buffer, 0, _available - _offset);
+
+                    _buffer = buffer;
+                }
+                else
+                {
+                    // Else, just move the unprocessed bytes to the beginning.
+
+                    Array.Copy(_buffer, _offset, _buffer, 0, _available - _offset);
+                }
+
+                // Reset the position and available to reflect the moved
+                // bytes.
+
+                _available -= _offset;
+                _offset = 0;
+            }
+
+            // We don't use the whole buffer, only what we were assigned in
+            // the beginning. This is to prevent the read buffer from
+            // resizing too much.
+            int bufferAvailable = Math.Min(_buffer.Length - _available, _bufferSize);
+
+            Task<int> ar = null;
+            lock (stream)
+            {
+                if (stream != null && stream.CanRead) ar = stream.ReadAsync(_buffer, _available, bufferAvailable);
+            }
+            return ar;
+        }
+
+
+
         public void EndRead(Stream stream, IAsyncResult asyncResult)
         {
-            _available += stream.EndRead(asyncResult);
+            _available += asyncResult is Task<int> i ? i.Result : stream.EndRead(asyncResult);
         }
     }
 }
