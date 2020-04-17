@@ -49,7 +49,7 @@ namespace NHttp
 
         public Stream InputStream { get; set; }
 
-        public bool IsHttps => _stream is SslStream;
+        public bool UseHttps => _stream is SslStream;
 
         public HttpClient(HttpServer server, TcpClient client)
         {
@@ -155,9 +155,7 @@ namespace NHttp
             {
                 if (_stream != null && _stream.CanRead)
                 {
-                    Task<int> ar = ReadBuffer.ReadAsync(_stream);
-                    ar.ContinueWith(t => ReadCallback(t));
-                    if (ar != null) Server.TimeoutManager.ReadQueue.Add(ar, this);
+                    Server.TimeoutManager.ReadQueue.Add(ReadBuffer.ReadAsync(_stream).ContinueWith(t => ReadCallback(t)), this);
                 }
             }
             catch (Exception ex)
@@ -232,7 +230,7 @@ namespace NHttp
         {
             string line = ReadBuffer.ReadLine();
 
-            if (line == null) return;
+            if (string.IsNullOrEmpty(line)) return;
 
             // Parse the prolog.
 
@@ -422,7 +420,8 @@ namespace NHttp
             BeginWrite();
         }
 
-        private void BeginWrite()
+        [Obsolete]
+        private void BeginWriteOld()
         {
             if (_disposed) return;
             try
@@ -430,10 +429,7 @@ namespace NHttp
                 // Copy the next part from the write stream.
                 int read = _writeStream.Read(_writeBuffer, 0, _writeBuffer.Length);
 
-                Server.TimeoutManager.WriteQueue.Add(
-                    _stream.BeginWrite(_writeBuffer, 0, read, WriteCallback, null),
-                    this
-                );
+                Server.TimeoutManager.WriteQueue.Add(_stream.BeginWrite(_writeBuffer, 0, read, WriteCallback, null), this);
             }
             catch (Exception ex)
             {
@@ -443,13 +439,34 @@ namespace NHttp
             }
         }
 
+
+        private void BeginWrite()
+        {
+            if (_disposed) return;
+            try
+            {
+                // Copy the next part from the write stream.
+                int read = _writeStream.Read(_writeBuffer, 0, _writeBuffer.Length);
+
+                Server.TimeoutManager.WriteQueue.Add(
+                    _stream.WriteAsync(_writeBuffer, 0, read).ContinueWith(t => WriteCallback(t)),
+                    this);
+            }
+            catch (Exception ex)
+            {
+                Log.Info("BeginWrite failed", ex);
+                Dispose();
+            }
+        }
+
+
         private void WriteCallback(IAsyncResult asyncResult)
         {
             if (_disposed) return;
 
             try
             {
-                _stream.EndWrite(asyncResult);
+                if (!(asyncResult is Task)) _stream.EndWrite(asyncResult);
 
                 if (_writeStream != null && _writeStream.Length != _writeStream.Position)
                 {
