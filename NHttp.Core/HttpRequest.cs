@@ -279,7 +279,7 @@ namespace NHttp
 
             var sb = new StringBuilder();
 
-            if (client.UseHttps) sb.Append("https://");
+            if (client.UseSSL) sb.Append("https://");
             else sb.Append("http://");
 
             sb.Append(host);

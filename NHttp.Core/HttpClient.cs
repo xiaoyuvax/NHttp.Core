@@ -49,7 +49,7 @@ namespace NHttp
 
         public Stream InputStream { get; set; }
 
-        public bool UseHttps => _stream is SslStream;
+        public bool UseSSL => _stream is SslStream;
 
         public HttpClient(HttpServer server, TcpClient client)
         {
@@ -66,7 +66,7 @@ namespace NHttp
 
             _stream = client.GetStream();
 
-            if (server.ServerCertificate != null)
+            if (server.UseSSL)
             {
                 try
                 {

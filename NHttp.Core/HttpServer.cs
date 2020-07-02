@@ -24,6 +24,8 @@ namespace NHttp
 
         public X509Certificate ServerCertificate { get; set; }
 
+        public bool UseSSL => ServerCertificate != null;
+
         public bool ClientCertificateRequire { get; set; } = false;
 
         public SslProtocols AllowedSslProtocols { get; set; } = SslProtocols.Default;
