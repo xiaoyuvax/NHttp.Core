@@ -155,8 +155,7 @@ namespace NHttp
 
             try
             {
-                // Prevent any new connections.
-
+                // Prevent any new connections.                
                 _listener.Stop();
 
                 // Wait for all clients to complete.
@@ -219,8 +218,7 @@ namespace NHttp
                 _clientsChangedEvent.WaitOne(ShutdownTimeout - shutdownRunning);
             }
 
-            if (!forceShutdown)
-                return;
+            if (!forceShutdown) return;
 
             // If there are still clients running after the timeout, their
             // connections will be forcibly closed.

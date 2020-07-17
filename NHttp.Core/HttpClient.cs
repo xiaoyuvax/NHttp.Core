@@ -289,11 +289,9 @@ namespace NHttp
                 return;
             }
 
-            if (ProcessExpectHeader())
-                return;
+            if (ProcessExpectHeader()) return;
 
-            if (ProcessContentLengthHeader())
-                return;
+            if (ProcessContentLengthHeader()) return;
 
             // The request has been completely parsed now.
 

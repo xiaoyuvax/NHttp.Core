@@ -19,6 +19,7 @@ namespace NHttp
         public HttpRequest Request { get { return Context.Request; } }
 
         public HttpResponse Response { get { return Context.Response; } }
+
     }
 
     public delegate void HttpRequestEventHandler(object sender, HttpRequestEventArgs e);
