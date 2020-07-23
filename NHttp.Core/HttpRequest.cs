@@ -88,11 +88,9 @@ namespace NHttp
         {
             Headers = CreateCollection(client.Headers);
 
-            string header;
-
             // Parse Accept.
 
-            if (client.Headers.TryGetValue("Accept", out header))
+            if (client.Headers.TryGetValue("Accept", out string header))
             {
                 string[] parts = header.Split(',');
 
@@ -252,9 +250,8 @@ namespace NHttp
 
             string host;
             string port;
-            string hostHeader;
 
-            if (client.Headers.TryGetValue("Host", out hostHeader))
+            if (client.Headers.TryGetValue("Host", out string hostHeader))
             {
                 parts = hostHeader.Split(new[] { ':' }, 2);
 

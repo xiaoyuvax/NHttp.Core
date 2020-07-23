@@ -1,7 +1,7 @@
 ﻿using Common.Logging;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -46,33 +46,15 @@ namespace NHttp
 
         public event HttpRequestEventHandler RequestReceived;
 
-        protected virtual void OnRequestReceived(HttpRequestEventArgs e)
-        {
-            var ev = RequestReceived;
-
-            if (ev != null)
-                ev(this, e);
-        }
+        protected virtual void OnRequestReceived(HttpRequestEventArgs e) => RequestReceived?.Invoke(this, e);
 
         public event HttpExceptionEventHandler UnhandledException;
 
-        protected virtual void OnUnhandledException(HttpExceptionEventArgs e)
-        {
-            var ev = UnhandledException;
-
-            if (ev != null)
-                ev(this, e);
-        }
+        protected virtual void OnUnhandledException(HttpExceptionEventArgs e) => UnhandledException?.Invoke(this, e);
 
         public event EventHandler StateChanged;
 
-        protected virtual void OnStateChanged(EventArgs e)
-        {
-            var ev = StateChanged;
-
-            if (ev != null)
-                ev(this, e);
-        }
+        protected virtual void OnStateChanged(EventArgs e) => StateChanged?.Invoke(this, e);
 
         public IPEndPoint EndPoint { get; set; }
 
@@ -102,7 +84,7 @@ namespace NHttp
             ReadTimeout = TimeSpan.FromSeconds(90);
             WriteTimeout = TimeSpan.FromSeconds(90);
 
-            ServerBanner = String.Format("NHttp/{0}", GetType().Assembly.GetName().Version);
+            ServerBanner = string.Format("NHttp/{0}", GetType().Assembly.GetName().Version);
         }
 
         public void Start()
@@ -111,7 +93,7 @@ namespace NHttp
 
             State = HttpServerState.Starting;
 
-            Log.Debug(String.Format("Starting HTTP server at {0}", EndPoint));
+            Log.Debug(string.Format("Starting HTTP server at {0}", EndPoint));
 
             TimeoutManager = new HttpTimeoutManager(this);
 
@@ -129,7 +111,7 @@ namespace NHttp
 
                 ServerUtility = new HttpServerUtility();
 
-                Log.Info(String.Format("HTTP server running at {0}", EndPoint));
+                Log.Info(string.Format("HTTP server running at {0}", EndPoint));
             }
             catch (Exception ex)
             {
@@ -149,17 +131,16 @@ namespace NHttp
         {
             if (!VerifyState(HttpServerState.Started)) return;
 
-            Log.Debug("Stopping HTTP server");
+            Log.Debug("Stopping HTTP server...");
 
             State = HttpServerState.Stopping;
 
             try
             {
-                // Prevent any new connections.                
+                // Prevent any new connections.
                 _listener.Stop();
 
                 // Wait for all clients to complete.
-
                 StopClients();
             }
             catch (Exception ex)
@@ -184,29 +165,11 @@ namespace NHttp
             bool forceShutdown = false;
 
             // Clients that are waiting for new requests are closed.
-
-            List<HttpClient> clients;
-
-            lock (_syncLock)
-            {
-                clients = new List<HttpClient>(_clients.Keys);
-            }
-
-            foreach (var client in clients)
-            {
-                client.RequestClose();
-            }
+            _clients.Keys.ToList().ForEach(i => i.RequestClose());
 
             // First give all clients a chance to complete their running requests.
-
-            while (true)
+            while (_clients.Count > 0)
             {
-                lock (_syncLock)
-                {
-                    if (_clients.Count == 0)
-                        break;
-                }
-
                 var shutdownRunning = DateTime.Now - shutdownStarted;
 
                 if (shutdownRunning >= ShutdownTimeout)
@@ -223,28 +186,11 @@ namespace NHttp
             // If there are still clients running after the timeout, their
             // connections will be forcibly closed.
 
-            lock (_syncLock)
-            {
-                clients = new List<HttpClient>(_clients.Keys);
-            }
-
-            foreach (var client in clients)
-            {
-                client.ForceClose();
-            }
+            _clients.Keys.ToList().ForEach(i => i.ForceClose());
 
             // Wait for the registered clients to be cleared.
 
-            while (true)
-            {
-                lock (_syncLock)
-                {
-                    if (_clients.Count == 0)
-                        break;
-                }
-
-                _clientsChangedEvent.WaitOne();
-            }
+            while (_clients.Count > 0) _clientsChangedEvent.WaitOne();
         }
 
         private void BeginAcceptTcpClient()
@@ -284,6 +230,7 @@ namespace NHttp
             {
                 Log.Info("Failed to accept TCP client", ex);
             }
+
             if (!_disposed && _state == HttpServerState.Started) BeginAcceptTcpClient();
         }
 
@@ -296,7 +243,7 @@ namespace NHttp
         internal void UnregisterClient(HttpClient client)
         {
             if (client == null) throw new ArgumentNullException("client");
-            else if (_clients.TryRemove(client, out bool v)) _clientsChangedEvent.Set();
+            else if (_clients.TryRemove(client, out _)) _clientsChangedEvent.Set();
         }
 
         private bool VerifyState(HttpServerState state) => !_disposed && _state == state;
@@ -305,20 +252,13 @@ namespace NHttp
         {
             if (!_disposed)
             {
-                if (_state == HttpServerState.Started)
-                    Stop();
+                if (_state == HttpServerState.Started) Stop();
 
-                if (_clientsChangedEvent != null)
-                {
-                    ((IDisposable)_clientsChangedEvent).Dispose();
-                    _clientsChangedEvent = null;
-                }
+                ((IDisposable)_clientsChangedEvent)?.Dispose();
+                _clientsChangedEvent = null;
 
-                if (TimeoutManager != null)
-                {
-                    TimeoutManager.Dispose();
-                    TimeoutManager = null;
-                }
+                TimeoutManager?.Dispose();
+                TimeoutManager = null;
 
                 _disposed = true;
             }
@@ -326,16 +266,14 @@ namespace NHttp
 
         internal void RaiseRequest(HttpContext context)
         {
-            if (context == null)
-                throw new ArgumentNullException("context");
+            if (context == null) throw new ArgumentNullException("context");
 
             OnRequestReceived(new HttpRequestEventArgs(context));
         }
 
         internal bool RaiseUnhandledException(HttpContext context, Exception exception)
         {
-            if (context == null)
-                throw new ArgumentNullException("context");
+            if (context == null) throw new ArgumentNullException("context");
 
             var e = new HttpExceptionEventArgs(context, exception);
 

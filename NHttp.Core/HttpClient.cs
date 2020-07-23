@@ -82,23 +82,14 @@ namespace NHttp
             _state = ClientState.ReadingProlog;
             _context = null;
 
-            if (_parser != null)
-            {
-                _parser.Dispose();
-                _parser = null;
-            }
+            _parser?.Dispose();
+            _parser = null;
 
-            if (_writeStream != null)
-            {
-                _writeStream.Dispose();
-                _writeStream = null;
-            }
+            _writeStream?.Dispose();
+            _writeStream = null;
 
-            if (InputStream != null)
-            {
-                InputStream.Dispose();
-                InputStream = null;
-            }
+            InputStream?.Dispose();
+            InputStream = null;
 
             ReadBuffer.Reset();
 
@@ -108,15 +99,8 @@ namespace NHttp
             Headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             PostParameters = new NameValueCollection();
 
-            if (MultiPartItems != null)
-            {
-                foreach (var item in MultiPartItems)
-                {
-                    if (item.Stream != null) item.Stream.Dispose();
-                }
-
-                MultiPartItems = null;
-            }
+            MultiPartItems?.ForEach(i => i.Stream?.Dispose());
+            MultiPartItems = null;
         }
 
         public void BeginRequest()
@@ -646,10 +630,10 @@ namespace NHttp
 
         public void RequestClose()
         {
-            if (_state == ClientState.ReadingProlog) _stream.Dispose();
+            if (_state == ClientState.ReadingProlog) _stream?.Dispose();
         }
 
-        public void ForceClose() => _stream?.Dispose();
+        public void ForceClose() => Dispose();
 
         public void UnsetParser()
         {
@@ -726,17 +710,11 @@ namespace NHttp
 
                 _state = ClientState.Closed;
 
-                if (_stream != null)
-                {
-                    _stream.Dispose();
-                    _stream = null;
-                }
+                _stream?.Dispose();
+                _stream = null;
 
-                if (TcpClient != null)
-                {
-                    TcpClient.Close();
-                    TcpClient = null;
-                }
+                TcpClient?.Close();
+                TcpClient = null;
 
                 Reset();
             }
