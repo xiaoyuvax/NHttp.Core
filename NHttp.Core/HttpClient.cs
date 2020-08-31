@@ -519,75 +519,82 @@ namespace NHttp
         {
             var headers = BuildResponseHeaders();
 
-            if (_writeStream != null)
-                _writeStream.Dispose();
+            if (_writeStream != null) _writeStream.Dispose();
 
-            _writeStream = new MemoryStream(headers);
+            if (headers != null)
+            {
+                _writeStream = new MemoryStream(headers);
 
-            _state = ClientState.WritingHeaders;
+                _state = ClientState.WritingHeaders;
 
-            BeginWrite();
+                BeginWrite();
+            }
+            else Dispose();
         }
 
         private byte[] BuildResponseHeaders()
         {
             Debug.Assert(_context != null);
-            var response = _context.Response;
-            var sb = new StringBuilder();
-
-            // Write the prolog.
-
-            sb.Append(Protocol);
-            sb.Append(' ');
-            sb.Append(response.StatusCode);
-
-            if (!string.IsNullOrEmpty(response.StatusDescription))
+            if (_context != null)
             {
+                var response = _context.Response;
+                var sb = new StringBuilder();
+
+                // Write the prolog.
+
+                sb.Append(Protocol);
                 sb.Append(' ');
-                sb.Append(response.StatusDescription);
+                sb.Append(response.StatusCode);
+
+                if (!string.IsNullOrEmpty(response.StatusDescription))
+                {
+                    sb.Append(' ');
+                    sb.Append(response.StatusDescription);
+                }
+
+                sb.Append("\r\n");
+
+                // Write all headers provided by Response.
+
+                if (!string.IsNullOrEmpty(response.CacheControl))
+                    WriteHeader(sb, "Cache-Control", response.CacheControl);
+
+                if (!string.IsNullOrEmpty(response.ContentType))
+                {
+                    string contentType = response.ContentType;
+
+                    if (!string.IsNullOrEmpty(response.CharSet))
+                        contentType += "; charset=" + response.CharSet;
+
+                    WriteHeader(sb, "Content-Type", contentType);
+                }
+
+                WriteHeader(sb, "Expires", response.ExpiresAbsolute.ToString("R"));
+
+                if (!string.IsNullOrEmpty(response.RedirectLocation))
+                    WriteHeader(sb, "Location", response.RedirectLocation);
+
+                // Write the remainder of the headers.
+
+                foreach (string key in response.Headers.AllKeys)
+                {
+                    WriteHeader(sb, key, response.Headers[key]);
+                }
+
+                // Write the content length (we override custom headers for this).
+
+                WriteHeader(sb, "Content-Length", response.OutputStream.BaseStream.Length.ToString(CultureInfo.InvariantCulture));
+
+                for (int i = 0; i < response.Cookies.Count; i++)
+                {
+                    WriteHeader(sb, "Set-Cookie", response.Cookies[i].GetHeaderValue());
+                }
+
+                sb.Append("\r\n");
+
+                return response.HeadersEncoding.GetBytes(sb.ToString());
             }
-
-            sb.Append("\r\n");
-
-            // Write all headers provided by Response.
-
-            if (!string.IsNullOrEmpty(response.CacheControl))
-                WriteHeader(sb, "Cache-Control", response.CacheControl);
-
-            if (!string.IsNullOrEmpty(response.ContentType))
-            {
-                string contentType = response.ContentType;
-
-                if (!string.IsNullOrEmpty(response.CharSet))
-                    contentType += "; charset=" + response.CharSet;
-
-                WriteHeader(sb, "Content-Type", contentType);
-            }
-
-            WriteHeader(sb, "Expires", response.ExpiresAbsolute.ToString("R"));
-
-            if (!string.IsNullOrEmpty(response.RedirectLocation))
-                WriteHeader(sb, "Location", response.RedirectLocation);
-
-            // Write the remainder of the headers.
-
-            foreach (string key in response.Headers.AllKeys)
-            {
-                WriteHeader(sb, key, response.Headers[key]);
-            }
-
-            // Write the content length (we override custom headers for this).
-
-            WriteHeader(sb, "Content-Length", response.OutputStream.BaseStream.Length.ToString(CultureInfo.InvariantCulture));
-
-            for (int i = 0; i < response.Cookies.Count; i++)
-            {
-                WriteHeader(sb, "Set-Cookie", response.Cookies[i].GetHeaderValue());
-            }
-
-            sb.Append("\r\n");
-
-            return response.HeadersEncoding.GetBytes(sb.ToString());
+            else return null;
         }
 
         private void WriteHeader(StringBuilder sb, string key, string value)

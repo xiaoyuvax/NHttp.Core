@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
+using System.Threading.Tasks;
 using Wima.Log;
 
 namespace NHttp
@@ -32,7 +33,7 @@ namespace NHttp
 
         public HttpServerState State
         {
-            get { return _state; }
+            get => _state;
             private set
             {
                 if (_state != value)
@@ -69,8 +70,6 @@ namespace NHttp
         public TimeSpan WriteTimeout { get; set; }
 
         public TimeSpan ShutdownTimeout { get; set; }
-
-        internal HttpServerUtility ServerUtility { get; private set; }
 
         internal HttpTimeoutManager TimeoutManager { get; private set; }
 
@@ -109,7 +108,6 @@ namespace NHttp
 
                 _listener = listener;
 
-                ServerUtility = new HttpServerUtility();
 
                 Log.Info(string.Format("HTTP server running at {0}", EndPoint));
             }
@@ -193,21 +191,15 @@ namespace NHttp
             while (_clients.Count > 0) _clientsChangedEvent.WaitOne();
         }
 
-        private void BeginAcceptTcpClient()
-        {
-            if (_listener != null)
-            {
-                _listener.BeginAcceptTcpClient(AcceptTcpClientCallback, null);
-            }
-        }
+        private void BeginAcceptTcpClient() => _listener?.AcceptTcpClientAsync().ContinueWith(t => AcceptTcpClientCallback(t));
 
-        private void AcceptTcpClientCallback(IAsyncResult asyncResult)
+        private void AcceptTcpClientCallback(Task<TcpClient> asyncResult)
         {
             try
             {
                 if (_listener == null) return;
 
-                var tcpClient = _listener.EndAcceptTcpClient(asyncResult);
+                var tcpClient = asyncResult.Result;
 
                 // If we've stopped already, close the TCP client now.
                 if (_state != HttpServerState.Started)

@@ -3,38 +3,20 @@ using System.Text;
 
 namespace NHttp
 {
-    public class HttpServerUtility
+    public static class HttpServerUtility
     {
-        internal HttpServerUtility()
-        {
-        }
+        
+        public static string MachineName => Environment.MachineName;
 
-        public string MachineName
-        {
-            get { return Environment.MachineName; }
-        }
+        public static string HtmlEncode(string value) => HttpUtil.HtmlEncode(value);
 
-        public string HtmlEncode(string value)
-        {
-            return HttpUtil.HtmlEncode(value);
-        }
+        public static string HtmlDecode(string value) => HttpUtil.HtmlDecode(value);
 
-        public string HtmlDecode(string value)
-        {
-            return HttpUtil.HtmlDecode(value);
-        }
+        public static string UrlEncode(string text) => Uri.EscapeDataString(text);
 
-        public string UrlEncode(string text)
-        {
-            return Uri.EscapeDataString(text);
-        }
+        public static string UrlDecode(string text) => UrlDecode(text, Encoding.UTF8);
 
-        public string UrlDecode(string text)
-        {
-            return UrlDecode(text, Encoding.UTF8);
-        }
-
-        public string UrlDecode(string text, Encoding encoding)
+        public static string UrlDecode(string text, Encoding encoding)
         {
             if (encoding == null)
                 throw new ArgumentNullException("encoding");
