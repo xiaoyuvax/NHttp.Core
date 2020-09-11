@@ -110,25 +110,6 @@ namespace NHttp
             BeginRead();
         }
 
-        [Obsolete]
-        private void BeginReadOld()
-        {
-            if (_disposed) return;
-
-            try
-            {
-                if (_stream != null && _stream.CanRead)
-                {
-                    IAsyncResult ar = ReadBuffer.BeginRead(_stream, ReadCallback, new object());
-                    if (ar != null) Server.TimeoutManager.ReadQueue.Add(ar, this);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Info(ReadBuffer.GetHashCode() + "\tBeginRead failed - ", ex);
-                Dispose();
-            }
-        }
 
 
         private void BeginRead()
@@ -151,7 +132,7 @@ namespace NHttp
 
 
 
-        private void ReadCallback(IAsyncResult asyncResult)
+        private void ReadCallback(Task<int> asyncResult)
         {
             if (_disposed) return;
 
@@ -166,14 +147,13 @@ namespace NHttp
 
             try
             {
-                ReadBuffer.EndRead(_stream, asyncResult);
+                ReadBuffer.EndRead(asyncResult);
                 if (ReadBuffer.DataAvailable) ProcessReadBuffer();
                 else Dispose();
             }
             catch (ObjectDisposedException ex)
             {
                 Log.Info("Failed to read", ex);
-
                 Dispose();
             }
             catch (Exception ex)
@@ -402,25 +382,6 @@ namespace NHttp
             BeginWrite();
         }
 
-        [Obsolete]
-        private void BeginWriteOld()
-        {
-            if (_disposed) return;
-            try
-            {
-                // Copy the next part from the write stream.
-                int read = _writeStream.Read(_writeBuffer, 0, _writeBuffer.Length);
-
-                Server.TimeoutManager.WriteQueue.Add(_stream.BeginWrite(_writeBuffer, 0, read, WriteCallback, null), this);
-            }
-            catch (Exception ex)
-            {
-                Log.Info("BeginWrite failed", ex);
-
-                Dispose();
-            }
-        }
-
 
         private void BeginWrite()
         {
@@ -431,7 +392,7 @@ namespace NHttp
                 int read = _writeStream.Read(_writeBuffer, 0, _writeBuffer.Length);
 
                 Server.TimeoutManager.WriteQueue.Add(
-                    _stream.WriteAsync(_writeBuffer, 0, read).ContinueWith(t => WriteCallback(t)),
+                    _stream.WriteAsync(_writeBuffer, 0, read).ContinueWith(t => WriteCallback()),
                     this);
             }
             catch (Exception ex)
@@ -442,18 +403,15 @@ namespace NHttp
         }
 
 
-        private void WriteCallback(IAsyncResult asyncResult)
+        private void WriteCallback()
         {
             if (_disposed) return;
 
             try
             {
-                if (!(asyncResult is Task)) _stream.EndWrite(asyncResult);
-
                 if (_writeStream != null && _writeStream.Length != _writeStream.Position)
                 {
                     // Continue writing from the write stream.
-
                     BeginWrite();
                 }
                 else
@@ -534,7 +492,7 @@ namespace NHttp
 
         private byte[] BuildResponseHeaders()
         {
-            Debug.Assert(_context != null);
+            //Debug.Assert(_context != null);
             if (_context != null)
             {
                 var response = _context.Response;
@@ -624,12 +582,10 @@ namespace NHttp
 
             // Do not accept new requests when the server is stopping.
 
-            if (
-                !_errored &&
+            if (!_errored &&
                 Server.State == HttpServerState.Started &&
                 Headers.TryGetValue("Connection", out connectionHeader) &&
-                string.Equals(connectionHeader, "keep-alive", StringComparison.OrdinalIgnoreCase)
-            )
+                string.Equals(connectionHeader, "keep-alive", StringComparison.OrdinalIgnoreCase))
                 BeginRequest();
             else
                 Dispose();

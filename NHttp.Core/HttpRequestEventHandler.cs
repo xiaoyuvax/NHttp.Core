@@ -14,9 +14,9 @@ namespace NHttp
 
         public HttpContext Context { get; private set; }
 
-        public HttpRequest Request { get { return Context.Request; } }
+        public HttpRequest Request => Context.Request;
 
-        public HttpResponse Response { get { return Context.Response; } }
+        public HttpResponse Response => Context.Response;
 
     }
 

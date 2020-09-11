@@ -2,12 +2,13 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace NHttp
 {
     internal class HttpTimeoutManager : IDisposable
     {
-        private Thread _thread;
+        private Task _thread;
         private ManualResetEvent _closeEvent = new ManualResetEvent(false);
 
         public TimeoutQueue ReadQueue { get; private set; }
@@ -21,18 +22,16 @@ namespace NHttp
             ReadQueue = new TimeoutQueue(server.ReadTimeout);
             WriteQueue = new TimeoutQueue(server.WriteTimeout);
 
-            _thread = new Thread(ThreadProc);
-            _thread.Start();
+            _thread = Task.Run(() =>
+            {
+                while (!_closeEvent.WaitOne(TimeSpan.FromSeconds(1)))
+                {
+                    ProcessQueue(ReadQueue);
+                    ProcessQueue(WriteQueue);
+                }
+            });
         }
 
-        private void ThreadProc()
-        {
-            while (!_closeEvent.WaitOne(TimeSpan.FromSeconds(1)))
-            {
-                ProcessQueue(ReadQueue);
-                ProcessQueue(WriteQueue);
-            }
-        }
 
         private void ProcessQueue(TimeoutQueue queue)
         {
@@ -57,9 +56,10 @@ namespace NHttp
             if (_thread != null)
             {
                 _closeEvent.Set();
-                _thread.Join();
+                _thread.Wait();
                 _thread = null;
             }
+
             if (_closeEvent != null)
             {
                 _closeEvent.Close();
@@ -93,10 +93,8 @@ namespace NHttp
                 if (_items.Count == 0) return null;
 
                 _items.TryPeek(out TimeoutItem item);
-                if (item.Expires < _stopwatch.ElapsedTicks)
-                {
-                    if (_items.TryDequeue(out TimeoutItem removedItem)) return removedItem;
-                }
+                if (item.Expires < _stopwatch.ElapsedTicks && _items.TryDequeue(out TimeoutItem removedItem))
+                    return removedItem;
 
                 return null;
             }

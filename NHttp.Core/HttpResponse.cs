@@ -9,66 +9,6 @@ namespace NHttp
     public class HttpResponse
     {
         private readonly HttpContext _context;
-        public string CacheControl { get; set; }
-
-        public string CharSet { get; set; }
-
-        public string ContentType { get; set; }
-
-        public HttpCookieCollection Cookies { get; private set; }
-
-        public DateTime ExpiresAbsolute { get; set; }
-
-        public Encoding HeadersEncoding { get; set; }
-
-        public NameValueCollection Headers { get; private set; }
-
-        public bool IsClientConnected { get { return true; } }
-
-        public bool IsRequestBeingRedirected
-        {
-            get { return !String.IsNullOrEmpty(RedirectLocation); }
-        }
-
-        public HttpOutputStream OutputStream { get; private set; }
-
-        public string RedirectLocation { get; set; }
-
-        public int StatusCode { get; set; }
-
-        public string StatusDescription { get; set; }
-
-        public string Status
-        {
-            get
-            {
-                if (StatusDescription == null)
-                    return StatusCode.ToString(CultureInfo.InvariantCulture);
-                else
-                    return StatusCode.ToString(CultureInfo.InvariantCulture) + " " + StatusDescription;
-            }
-            set
-            {
-                StatusCode = 0;
-                StatusDescription = null;
-
-                if (value != null)
-                {
-                    string[] parts = value.Split(new[] { ' ' }, 2);
-
-                    if (int.TryParse(parts[0], out int statusCode))
-                    {
-                        StatusCode = statusCode;
-
-                        if (parts.Length == 2)
-                            StatusDescription = parts[1];
-                        else
-                            StatusDescription = null;
-                    }
-                }
-            }
-        }
-
         internal HttpResponse(HttpContext context)
         {
             if (context == null)
@@ -88,15 +28,55 @@ namespace NHttp
             Cookies = new HttpCookieCollection();
         }
 
-        public void Redirect(string location)
+        public string CacheControl { get; set; }
+
+        public string CharSet { get; set; }
+
+        public string ContentType { get; set; }
+
+        public HttpCookieCollection Cookies { get; private set; }
+
+        public DateTime ExpiresAbsolute { get; set; }
+
+        public NameValueCollection Headers { get; private set; }
+        public Encoding HeadersEncoding { get; set; }
+        public bool IsClientConnected { get { return true; } }
+
+        public bool IsRequestBeingRedirected => !string.IsNullOrEmpty(RedirectLocation);
+
+        public HttpOutputStream OutputStream { get; private set; }
+
+        public string RedirectLocation { get; set; }
+
+        public string Status
         {
-            Redirect(location, false);
+            get => StatusDescription == null ?
+                     StatusCode.ToString(CultureInfo.InvariantCulture)
+                    : StatusCode.ToString(CultureInfo.InvariantCulture) + " " + StatusDescription;
+            set
+            {
+                StatusCode = 0;
+                StatusDescription = null;
+
+                if (value != null)
+                {
+                    string[] parts = value.Split(new[] { ' ' }, 2);
+
+                    if (int.TryParse(parts[0], out int statusCode))
+                    {
+                        StatusCode = statusCode;
+                        StatusDescription = parts.Length == 2 ? parts[1] : StatusDescription = null;
+                    }
+                }
+            }
         }
 
-        public void RedirectPermanent(string location)
-        {
-            Redirect(location, true);
-        }
+        public int StatusCode { get; set; }
+
+        public string StatusDescription { get; set; }
+        public void Redirect(string location) => Redirect(location, false);
+
+        public void RedirectPermanent(string location) => Redirect(location, true);
 
         private void Redirect(string location, bool permanent)
         {
@@ -118,13 +98,9 @@ namespace NHttp
                     sb.Append(url.Port);
                 }
 
-                if (location.Length == 0)
-                    location = _context.Request.Path;
+                if (location.Length == 0) location = _context.Request.Path;
 
-                if (location[0] == '/')
-                {
-                    sb.Append(location);
-                }
+                if (location[0] == '/') sb.Append(location);
                 else
                 {
                     string path = _context.Request.Path;

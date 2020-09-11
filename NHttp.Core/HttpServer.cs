@@ -228,14 +228,12 @@ namespace NHttp
 
         private void RegisterClient(HttpClient client)
         {
-            if (client == null) throw new ArgumentNullException("client");
-            else if (_clients.TryAdd(client, true)) _clientsChangedEvent.Set();
+            if (client != null && _clients.TryAdd(client, true)) _clientsChangedEvent.Set();
         }
 
         internal void UnregisterClient(HttpClient client)
         {
-            if (client == null) throw new ArgumentNullException("client");
-            else if (_clients.TryRemove(client, out _)) _clientsChangedEvent.Set();
+            if (client != null && _clients.TryRemove(client, out _)) _clientsChangedEvent.Set();
         }
 
         private bool VerifyState(HttpServerState state) => !_disposed && _state == state;
@@ -258,9 +256,7 @@ namespace NHttp
 
         internal void RaiseRequest(HttpContext context)
         {
-            if (context == null) throw new ArgumentNullException("context");
-
-            OnRequestReceived(new HttpRequestEventArgs(context));
+            if (context != null) OnRequestReceived(new HttpRequestEventArgs(context));
         }
 
         internal bool RaiseUnhandledException(HttpContext context, Exception exception)
