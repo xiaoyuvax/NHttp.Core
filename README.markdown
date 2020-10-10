@@ -1,11 +1,14 @@
 # NHttp.Core
-This is a core version of NHttp with SSL support forked from the original base.
+This is a core version of NHttp with SSL support forked from the original base,and was implemented in .net Standard 2.0, as enabled this library can be referenced in both .net framework and .net core applications.
 
 LGPL License.
 
 ## Introduction
 
-NHttp is a simple asynchronous HTTP server written in C# for the .NET framework.
+NHttp is a very lightweighted,simply asynchronous Web server which supports Http/Https written in C# for the .NET framework and .NET Core.
+
+It is very ideal for using in lightweighted background program(such as a server program) to expose web admin interface.
+
 
 NHttp supports the following features:
 
