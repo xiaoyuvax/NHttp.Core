@@ -106,10 +106,8 @@ namespace NHttp
         public void BeginRequest()
         {
             Reset();
-
             BeginRead();
         }
-
 
 
         private void BeginRead()
@@ -258,7 +256,6 @@ namespace NHttp
             if (ProcessContentLengthHeader()) return;
 
             // The request has been completely parsed now.
-
             ExecuteRequest();
         }
 
@@ -372,8 +369,7 @@ namespace NHttp
 
             var bytes = Encoding.ASCII.GetBytes(sb.ToString());
 
-            if (_writeStream != null)
-                _writeStream.Dispose();
+            _writeStream?.Dispose();
 
             _writeStream = new MemoryStream();
             _writeStream.Write(bytes, 0, bytes.Length);
@@ -446,10 +442,7 @@ namespace NHttp
                                     ProcessException(ex);
                                 }
                             }
-                            else
-                            {
-                                BeginRead();
-                            }
+                            else BeginRead();
                             break;
                     }
                 }
@@ -466,7 +459,7 @@ namespace NHttp
         {
             _context = new HttpContext(this);
 
-            Log.Debug(string.Format("Accepted request '{0}'", _context.Request.RawUrl));
+            Log.Debug(string.Format("{0}\t{1}\t{2}\t{3}", TcpClient.Client.RemoteEndPoint.ToString(), _context.Request.HttpMethod, _context.Request.RawUrl, _context.Request.Headers.Get("User-Agent")));
 
             Server.RaiseRequest(_context);
 
@@ -475,10 +468,10 @@ namespace NHttp
 
         private void WriteResponseHeaders()
         {
+            _writeStream?.Dispose();
+
             var headers = BuildResponseHeaders();
-
-            if (_writeStream != null) _writeStream.Dispose();
-
+            
             if (headers != null)
             {
                 _writeStream = new MemoryStream(headers);
@@ -565,8 +558,7 @@ namespace NHttp
 
         private void WriteResponseContent()
         {
-            if (_writeStream != null)
-                _writeStream.Dispose();
+            _writeStream?.Dispose();
 
             _writeStream = _context.Response.OutputStream.BaseStream;
             _writeStream.Position = 0;

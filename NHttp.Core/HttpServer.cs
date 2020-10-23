@@ -1,6 +1,7 @@
 ﻿using Common.Logging;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -29,7 +30,9 @@ namespace NHttp
 
         public bool ClientCertificateRequire { get; set; } = false;
 
-        public SslProtocols AllowedSslProtocols { get; set; } = SslProtocols.Default;
+        public SslProtocols AllowedSslProtocols { get; set; } = SslProtocols.Default | SslProtocols.Tls12;
+
+        public bool SocketReuseAddress = false;
 
         public HttpServerState State
         {
@@ -99,6 +102,8 @@ namespace NHttp
             // Start the listener.
 
             var listener = new TcpListener(EndPoint);
+            //set the REUSE ADDRESS option value on the underlying socket,to allow port being release immediately.
+            if (SocketReuseAddress) listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
 
             try
             {
@@ -122,7 +127,21 @@ namespace NHttp
 
             State = HttpServerState.Started;
 
-            BeginAcceptTcpClient();
+            Task.Run(() =>
+            {
+                while (!_disposed && _state == HttpServerState.Started)
+                {
+                    try
+                    {
+                        var t = _listener?.AcceptTcpClient();
+                        AcceptTcpClientCallback(t);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex);
+                    }
+                }
+            });
         }
 
         public void Stop()
@@ -191,23 +210,20 @@ namespace NHttp
             while (_clients.Count > 0) _clientsChangedEvent.WaitOne();
         }
 
-        private void BeginAcceptTcpClient() => _listener?.AcceptTcpClientAsync().ContinueWith(t => AcceptTcpClientCallback(t));
 
-        private void AcceptTcpClientCallback(Task<TcpClient> asyncResult)
+        private void AcceptTcpClientCallback(TcpClient tcpClient)
         {
+            if (_listener == null) return;
+            // If we've stopped already, close the TCP client now.
+
+            if (_state != HttpServerState.Started)
+            {
+                tcpClient.Close();
+                return;
+            }
+
             try
             {
-                if (_listener == null) return;
-
-                var tcpClient = asyncResult.Result;
-
-                // If we've stopped already, close the TCP client now.
-                if (_state != HttpServerState.Started)
-                {
-                    tcpClient.Close();
-                    return;
-                }
-
                 var client = new HttpClient(this, tcpClient);
 
                 RegisterClient(client);
@@ -222,8 +238,6 @@ namespace NHttp
             {
                 Log.Info("Failed to accept TCP client", ex);
             }
-
-            if (!_disposed && _state == HttpServerState.Started) BeginAcceptTcpClient();
         }
 
         private void RegisterClient(HttpClient client)
