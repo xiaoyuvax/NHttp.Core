@@ -72,6 +72,7 @@ namespace NHttp
                 {
                     _stream = new SslStream(_stream, false);
                     ((SslStream)_stream).AuthenticateAsServer(server.ServerCertificate, server.ClientCertificateRequire, server.AllowedSslProtocols, true);
+
                 }
                 catch (Exception ex) { Log.Debug(ex); }
             }
