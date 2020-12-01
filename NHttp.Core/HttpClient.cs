@@ -472,7 +472,7 @@ namespace NHttp
             _writeStream?.Dispose();
 
             var headers = BuildResponseHeaders();
-            
+
             if (headers != null)
             {
                 _writeStream = new MemoryStream(headers);
@@ -616,8 +616,7 @@ namespace NHttp
 
             try
             {
-                if (_context == null)
-                    _context = new HttpContext(this);
+                if (_context == null) _context = new HttpContext(this);
 
                 _context.Response.Status = "500 Internal Server Error";
 

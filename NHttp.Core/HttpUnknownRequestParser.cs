@@ -14,8 +14,7 @@ namespace NHttp
         {
             Client.ReadBuffer.CopyToStream(Client.InputStream, ContentLength);
 
-            if (Client.InputStream.Length == ContentLength)
-                EndParsing();
+            if (Client.InputStream.Length == ContentLength) EndParsing();
         }
     }
 }

@@ -228,12 +228,7 @@ namespace NHttp
 
                 RegisterClient(client);
                 client.BeginRequest();
-            }
-            catch (ObjectDisposedException)
-            {
-                // EndAcceptTcpClient will throw a ObjectDisposedException
-                // when we're shutting down. This can safely be ignored.
-            }
+            }            
             catch (Exception ex)
             {
                 Log.Info("Failed to accept TCP client", ex);
@@ -242,12 +237,12 @@ namespace NHttp
 
         private void RegisterClient(HttpClient client)
         {
-            if (client != null && _clients.TryAdd(client, true)) _clientsChangedEvent.Set();
+            if (client != null && _clients.TryAdd(client, true)) _clientsChangedEvent?.Set();
         }
 
         internal void UnregisterClient(HttpClient client)
         {
-            if (client != null && _clients.TryRemove(client, out _)) _clientsChangedEvent.Set();
+            if (client != null && _clients.TryRemove(client, out _)) _clientsChangedEvent?.Set();
         }
 
         private bool VerifyState(HttpServerState state) => !_disposed && _state == state;

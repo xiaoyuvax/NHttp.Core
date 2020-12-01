@@ -80,8 +80,7 @@ namespace NHttp
 
             InputStream = client.InputStream;
 
-            if (InputStream != null)
-                InputStream.Position = 0;
+            if (InputStream != null) InputStream.Position = 0;
         }
 
         private void ParseHeaders(HttpClient client)

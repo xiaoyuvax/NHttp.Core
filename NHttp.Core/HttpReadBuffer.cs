@@ -43,17 +43,11 @@ namespace NHttp
             return true;
         }
 
-        public void CopyToStream(Stream stream, int maximum)
-        {
-            CopyToStream(stream, maximum, null);
-        }
+        public void CopyToStream(Stream stream, int maximum) => CopyToStream(stream, maximum, null);
 
         public bool CopyToStream(Stream stream, int maximum, byte[] boundary)
         {
-            int toRead = Math.Min(
-                _available - _offset,
-                maximum - _totalRead
-            );
+            int toRead = Math.Min(_available - _offset, maximum - _totalRead);
 
             bool atBoundary = false;
             bool partialBoundaryMatch = false;
@@ -97,8 +91,7 @@ namespace NHttp
 
                     // When we have a partial boundary match, we need more data.
 
-                    if (partialBoundaryMatch)
-                        _forceNewRead = true;
+                    if (partialBoundaryMatch) _forceNewRead = true;
                 }
             }
 
@@ -185,8 +178,7 @@ namespace NHttp
 
         public string ReadLine()
         {
-            if (_lineBuffer == null)
-                _lineBuffer = new StringBuilder();
+            if (_lineBuffer == null) _lineBuffer = new StringBuilder();
 
             while (_offset < _available)
             {
