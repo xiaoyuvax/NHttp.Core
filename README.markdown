@@ -78,7 +78,7 @@ listening to.
 
 ## Logging
 
-This fork version of NHttp references one of my other opensource projects - WMLogService for logging, which implements Common.Logging interfaces and can be configured to use 3rd party log modules which implement Common.Logging including popular Log4net. But i think they r just too heavy, and i think my own lighted-weighted log module works better, at least for my own use.
+This fork of NHttp references one of my other opensource projects - WMLogService for logging, which implements Common.Logging interfaces and can be configured to use 3rd party log modules which implement Common.Logging including popular Log4net. But i think they r just too heavy, and i think my own lighted-weighted log module works better, at least for my own use.
 
 ## Bugs
 
