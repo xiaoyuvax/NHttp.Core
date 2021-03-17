@@ -685,4 +685,5 @@ namespace NHttp
             Closed
         }
     }
+	
 }
