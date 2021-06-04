@@ -293,7 +293,7 @@ namespace NHttp
 
         private void ParseRemoteEndPoint(HttpClient client)
         {
-            var endPoint = (IPEndPoint)client.TcpClient.Client.RemoteEndPoint;
+            var endPoint = (IPEndPoint)client.TcpClientRemoteEndPoint;
 
             UserHostName = UserHostAddress = endPoint.Address.ToString();
         }

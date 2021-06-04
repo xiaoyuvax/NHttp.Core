@@ -5,6 +5,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
@@ -20,96 +21,123 @@ namespace NHttp
 
         private static readonly Regex PrologRegex = new Regex("^([A-Z]+) ([^ ]+) (HTTP/[^ ]+)$", RegexOptions.Compiled);
 
-        private bool _disposed;
         private readonly byte[] _writeBuffer;
-        private Stream _stream;
-        private ClientState _state;
-        private MemoryStream _writeStream;
-        private HttpRequestParser _parser;
         private HttpContext _context;
+        private bool _disposed;
         private bool _errored;
+        private HttpRequestParser _parser;
+        /// <summary>
+        /// Store the TCP Socket reference might be better than TcpClient, so to force disposing the socket.
+        /// </summary>
+        private Socket _socket;
 
-        public HttpServer Server { get; private set; }
 
-        public TcpClient TcpClient { get; private set; }
-
-        public string Method { get; private set; }
-
-        public string Protocol { get; private set; }
-
-        public string Request { get; private set; }
-
-        public Dictionary<string, string> Headers { get; private set; }
-
-        public NameValueCollection PostParameters { get; set; }
-
-        public List<HttpMultiPartItem> MultiPartItems { get; set; }
-
-        public HttpReadBuffer ReadBuffer { get; private set; }
-
-        public Stream InputStream { get; set; }
-
-        public bool UseSSL => _stream is SslStream;
+        private ClientState _state;
+        private Stream _stream;
+        private MemoryStream _writeStream;
 
         public HttpClient(HttpServer server, TcpClient client)
         {
-            if (server == null)
-                throw new ArgumentNullException("server");
-            if (client == null)
-                throw new ArgumentNullException("client");
+            if (server == null) throw new ArgumentNullException("server");
+            if (client == null) throw new ArgumentNullException("client");
 
             Server = server;
-            TcpClient = client;
+            _socket = client.Client;
 
             ReadBuffer = new HttpReadBuffer(server.ReadBufferSize);
             _writeBuffer = new byte[server.WriteBufferSize];
 
             _stream = client.GetStream();
 
-            if (server.UseSSL)
-            {
-                try
+            if (server.UseSSL) try
                 {
                     _stream = new SslStream(_stream, false);
                     ((SslStream)_stream).AuthenticateAsServer(server.ServerCertificate, server.ClientCertificateRequire, server.AllowedSslProtocols, true);
-
                 }
                 catch (Exception ex) { Log.Debug(ex); }
-            }
         }
 
-        private void Reset()
+        private enum ClientState
         {
-            _state = ClientState.ReadingProlog;
-            _context = null;
-
-            _parser?.Dispose();
-            _parser = null;
-
-            _writeStream?.Dispose();
-            _writeStream = null;
-
-            InputStream?.Dispose();
-            InputStream = null;
-
-            ReadBuffer.Reset();
-
-            Method = null;
-            Protocol = null;
-            Request = null;
-            Headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            PostParameters = new NameValueCollection();
-
-            MultiPartItems?.ForEach(i => i.Stream?.Dispose());
-            MultiPartItems = null;
+            ReadingProlog,
+            ReadingHeaders,
+            ReadingContent,
+            WritingHeaders,
+            WritingContent,
+            Closed
         }
 
+        public Dictionary<string, string> Headers { get; private set; }
+        public Stream InputStream { get; set; }
+        public string Method { get; private set; }
+        public List<HttpMultiPartItem> MultiPartItems { get; set; }
+        public NameValueCollection PostParameters { get; set; }
+        public string Protocol { get; private set; }
+        public HttpReadBuffer ReadBuffer { get; private set; }
+        public string Request { get; private set; }
+        public HttpServer Server { get; private set; }
+
+        /// <summary>
+        /// TcpClient is not threadsafe, so it's meaningless to store its reference here.This property would be depreciated in the future.
+        /// Properties relevant to TcpClient should be stored in other thread-safe properties.
+        /// This property might be a bug point in the original code, especially for running with .net core.
+        /// </summary>
+        [Obsolete]
+        public TcpClient TcpClient { get; private set; }
+
+        public EndPoint TcpClientRemoteEndPoint => _socket?.RemoteEndPoint;
+
+        public bool UseSSL => _stream is SslStream;
         public void BeginRequest()
         {
             Reset();
             BeginRead();
         }
 
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _disposed = true;
+
+                Server.UnregisterClient(this);
+
+                _state = ClientState.Closed;
+
+                _stream?.Dispose();
+                _stream = null;
+
+                _socket?.Dispose();
+                _socket = null;
+
+                Reset();
+            }
+        }
+
+        public void ExecuteRequest()
+        {
+            _context = new HttpContext(this);
+
+            Log.Debug(string.Format("{0}\t{1}\t{2}\t{3}", TcpClientRemoteEndPoint.ToString(), _context.Request.HttpMethod, _context.Request.RawUrl, _context.Request.Headers.Get("User-Agent")));
+
+            Server.RaiseRequest(_context);
+
+            WriteResponseHeaders();
+        }
+
+        public void ForceClose() => Dispose();
+
+        public void RequestClose()
+        {
+            if (_state == ClientState.ReadingProlog) _stream?.Dispose();
+        }
+
+        public void UnsetParser()
+        {
+            //Debug.Assert(_parser != null);
+
+            _parser = null;
+        }
 
         private void BeginRead()
         {
@@ -129,119 +157,88 @@ namespace NHttp
             }
         }
 
-
-
-        private void ReadCallback(Task<int> asyncResult)
+        private void BeginWrite()
         {
             if (_disposed) return;
-
-            // The below state matches the RequestClose state. Dispose immediately
-            // when this occurs.
-
-            if (_state == ClientState.ReadingProlog && Server.State != HttpServerState.Started)
-            {
-                Dispose();
-                return;
-            }
-
             try
             {
-                ReadBuffer.EndRead(asyncResult);
-                if (ReadBuffer.DataAvailable) ProcessReadBuffer();
-                else Dispose();
-            }
-            catch (ObjectDisposedException ex)
-            {
-                Log.Info("Failed to read", ex);
-                Dispose();
+                // Copy the next part from the write stream.
+                int read = _writeStream.Read(_writeBuffer, 0, _writeBuffer.Length);
+
+                Server.TimeoutManager.WriteQueue.Add(
+                    _stream.WriteAsync(_writeBuffer, 0, read).ContinueWith(t => WriteCallback()),
+                    this);
             }
             catch (Exception ex)
             {
-                Log.Info(ReadBuffer.GetHashCode() + "\tFailed to read from the HTTP connection - ", ex);
-
-                ProcessException(ex);
+                Log.Info("BeginWrite failed", ex);
+                Dispose();
             }
         }
 
-        private void ProcessReadBuffer()
+        private byte[] BuildResponseHeaders()
         {
-            while (_writeStream == null && ReadBuffer.DataAvailable)
+            //Debug.Assert(_context != null);
+            if (_context != null)
             {
-                switch (_state)
+                var response = _context.Response;
+                var sb = new StringBuilder();
+
+                // Write the prolog.
+
+                sb.Append(Protocol);
+                sb.Append(' ');
+                sb.Append(response.StatusCode);
+
+                if (!string.IsNullOrEmpty(response.StatusDescription))
                 {
-                    case ClientState.ReadingProlog:
-                        ProcessProlog();
-                        break;
-
-                    case ClientState.ReadingHeaders:
-                        ProcessHeaders();
-                        break;
-
-                    case ClientState.ReadingContent:
-                        ProcessContent();
-                        break;
-
-                    default:
-                        throw new InvalidOperationException("Invalid state");
-                }
-            }
-
-            if (_writeStream == null) BeginRead();
-        }
-
-        private void ProcessProlog()
-        {
-            string line = ReadBuffer.ReadLine();
-
-            if (string.IsNullOrEmpty(line)) return;
-
-            // Parse the prolog.
-
-            var match = PrologRegex.Match(line);
-
-            if (!match.Success) throw new ProtocolException(string.Format("Could not parse prolog '{0}'", line));
-
-            Method = match.Groups[1].Value;
-            Request = match.Groups[2].Value;
-            Protocol = match.Groups[3].Value;
-
-            // Continue reading the headers.
-
-            _state = ClientState.ReadingHeaders;
-
-            ProcessHeaders();
-        }
-
-        private void ProcessHeaders()
-        {
-            string line;
-
-            while ((line = ReadBuffer.ReadLine()) != null)
-            {
-                // Have we completed receiving the headers?
-
-                if (line.Length == 0)
-                {
-                    // Reset the read buffer which resets the bytes read.
-
-                    ReadBuffer.Reset();
-
-                    // Start processing the body of the request.
-
-                    _state = ClientState.ReadingContent;
-
-                    ProcessContent();
-
-                    return;
+                    sb.Append(' ');
+                    sb.Append(response.StatusDescription);
                 }
 
-                string[] parts = line.Split(new[] { ':' }, 2);
+                sb.Append("\r\n");
 
-                if (parts.Length != 2)
-                    throw new ProtocolException("Received header without colon");
+                // Write all headers provided by Response.
 
-                Headers[parts[0].Trim()] = parts[1].Trim();
+                if (!string.IsNullOrEmpty(response.CacheControl))
+                    WriteHeader(sb, "Cache-Control", response.CacheControl);
+
+                if (!string.IsNullOrEmpty(response.ContentType))
+                {
+                    string contentType = response.ContentType;
+
+                    if (!string.IsNullOrEmpty(response.CharSet))
+                        contentType += "; charset=" + response.CharSet;
+
+                    WriteHeader(sb, "Content-Type", contentType);
+                }
+
+                WriteHeader(sb, "Expires", response.ExpiresAbsolute.ToString("R"));
+
+                if (!string.IsNullOrEmpty(response.RedirectLocation))
+                    WriteHeader(sb, "Location", response.RedirectLocation);
+
+                // Write the remainder of the headers.
+
+                foreach (string key in response.Headers.AllKeys)
+                {
+                    WriteHeader(sb, key, response.Headers[key]);
+                }
+
+                // Write the content length (we override custom headers for this).
+
+                WriteHeader(sb, "Content-Length", response.OutputStream.BaseStream.Length.ToString(CultureInfo.InvariantCulture));
+
+                for (int i = 0; i < response.Cookies.Count; i++)
+                {
+                    WriteHeader(sb, "Set-Cookie", response.Cookies[i].GetHeaderValue());
+                }
+
+                sb.Append("\r\n");
+
+                return response.HeadersEncoding.GetBytes(sb.ToString());
             }
+            else return null;
         }
 
         private void ProcessContent()
@@ -258,33 +255,6 @@ namespace NHttp
 
             // The request has been completely parsed now.
             ExecuteRequest();
-        }
-
-        private bool ProcessExpectHeader()
-        {
-            // Process the Expect: 100-continue header.
-
-            string expectHeader;
-
-            if (Headers.TryGetValue("Expect", out expectHeader))
-            {
-                // Remove the expect header for the next run.
-
-                Headers.Remove("Expect");
-
-                int pos = expectHeader.IndexOf(';');
-
-                if (pos != -1)
-                    expectHeader = expectHeader.Substring(0, pos).Trim();
-
-                if (!string.Equals("100-continue", expectHeader, StringComparison.OrdinalIgnoreCase))
-                    throw new ProtocolException(string.Format("Could not process Expect header '{0}'", expectHeader));
-
-                SendContinueResponse();
-                return true;
-            }
-
-            return false;
         }
 
         private bool ProcessContentLengthHeader()
@@ -357,247 +327,6 @@ namespace NHttp
             return false;
         }
 
-        private void SendContinueResponse()
-        {
-            var sb = new StringBuilder();
-
-            sb.Append(Protocol);
-            sb.Append(" 100 Continue\r\nServer: ");
-            sb.Append(Server.ServerBanner);
-            sb.Append("\r\nDate: ");
-            sb.Append(DateTime.UtcNow.ToString("R"));
-            sb.Append("\r\n\r\n");
-
-            var bytes = Encoding.ASCII.GetBytes(sb.ToString());
-
-            _writeStream?.Dispose();
-
-            _writeStream = new MemoryStream();
-            _writeStream.Write(bytes, 0, bytes.Length);
-            _writeStream.Position = 0;
-
-            BeginWrite();
-        }
-
-
-        private void BeginWrite()
-        {
-            if (_disposed) return;
-            try
-            {
-                // Copy the next part from the write stream.
-                int read = _writeStream.Read(_writeBuffer, 0, _writeBuffer.Length);
-
-                Server.TimeoutManager.WriteQueue.Add(
-                    _stream.WriteAsync(_writeBuffer, 0, read).ContinueWith(t => WriteCallback()),
-                    this);
-            }
-            catch (Exception ex)
-            {
-                Log.Info("BeginWrite failed", ex);
-                Dispose();
-            }
-        }
-
-
-        private void WriteCallback()
-        {
-            if (_disposed) return;
-
-            try
-            {
-                if (_writeStream != null && _writeStream.Length != _writeStream.Position)
-                {
-                    // Continue writing from the write stream.
-                    BeginWrite();
-                }
-                else
-                {
-                    if (_writeStream != null)
-                    {
-                        _writeStream.Dispose();
-                        _writeStream = null;
-                    }
-
-                    switch (_state)
-                    {
-                        case ClientState.WritingHeaders:
-                            WriteResponseContent();
-                            break;
-
-                        case ClientState.WritingContent:
-                            ProcessRequestCompleted();
-                            break;
-
-                        default:
-                            Debug.Assert(_state != ClientState.Closed);
-
-                            if (ReadBuffer.DataAvailable)
-                            {
-                                try
-                                {
-                                    ProcessReadBuffer();
-                                }
-                                catch (Exception ex)
-                                {
-                                    ProcessException(ex);
-                                }
-                            }
-                            else BeginRead();
-                            break;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Info("Failed to write", ex);
-
-                Dispose();
-            }
-        }
-
-        public void ExecuteRequest()
-        {
-            _context = new HttpContext(this);
-
-            Log.Debug(string.Format("{0}\t{1}\t{2}\t{3}", TcpClient.Client.RemoteEndPoint.ToString(), _context.Request.HttpMethod, _context.Request.RawUrl, _context.Request.Headers.Get("User-Agent")));
-
-            Server.RaiseRequest(_context);
-
-            WriteResponseHeaders();
-        }
-
-        private void WriteResponseHeaders()
-        {
-            _writeStream?.Dispose();
-
-            var headers = BuildResponseHeaders();
-
-            if (headers != null)
-            {
-                _writeStream = new MemoryStream(headers);
-
-                _state = ClientState.WritingHeaders;
-
-                BeginWrite();
-            }
-            else Dispose();
-        }
-
-        private byte[] BuildResponseHeaders()
-        {
-            //Debug.Assert(_context != null);
-            if (_context != null)
-            {
-                var response = _context.Response;
-                var sb = new StringBuilder();
-
-                // Write the prolog.
-
-                sb.Append(Protocol);
-                sb.Append(' ');
-                sb.Append(response.StatusCode);
-
-                if (!string.IsNullOrEmpty(response.StatusDescription))
-                {
-                    sb.Append(' ');
-                    sb.Append(response.StatusDescription);
-                }
-
-                sb.Append("\r\n");
-
-                // Write all headers provided by Response.
-
-                if (!string.IsNullOrEmpty(response.CacheControl))
-                    WriteHeader(sb, "Cache-Control", response.CacheControl);
-
-                if (!string.IsNullOrEmpty(response.ContentType))
-                {
-                    string contentType = response.ContentType;
-
-                    if (!string.IsNullOrEmpty(response.CharSet))
-                        contentType += "; charset=" + response.CharSet;
-
-                    WriteHeader(sb, "Content-Type", contentType);
-                }
-
-                WriteHeader(sb, "Expires", response.ExpiresAbsolute.ToString("R"));
-
-                if (!string.IsNullOrEmpty(response.RedirectLocation))
-                    WriteHeader(sb, "Location", response.RedirectLocation);
-
-                // Write the remainder of the headers.
-
-                foreach (string key in response.Headers.AllKeys)
-                {
-                    WriteHeader(sb, key, response.Headers[key]);
-                }
-
-                // Write the content length (we override custom headers for this).
-
-                WriteHeader(sb, "Content-Length", response.OutputStream.BaseStream.Length.ToString(CultureInfo.InvariantCulture));
-
-                for (int i = 0; i < response.Cookies.Count; i++)
-                {
-                    WriteHeader(sb, "Set-Cookie", response.Cookies[i].GetHeaderValue());
-                }
-
-                sb.Append("\r\n");
-
-                return response.HeadersEncoding.GetBytes(sb.ToString());
-            }
-            else return null;
-        }
-
-        private void WriteHeader(StringBuilder sb, string key, string value)
-        {
-            sb.Append(key);
-            sb.Append(": ");
-            sb.Append(value);
-            sb.Append("\r\n");
-        }
-
-        private void WriteResponseContent()
-        {
-            _writeStream?.Dispose();
-
-            _writeStream = _context.Response.OutputStream.BaseStream;
-            _writeStream.Position = 0;
-
-            _state = ClientState.WritingContent;
-
-            BeginWrite();
-        }
-
-        private void ProcessRequestCompleted()
-        {
-            string connectionHeader;
-
-            // Do not accept new requests when the server is stopping.
-
-            if (!_errored &&
-                Server.State == HttpServerState.Started &&
-                Headers.TryGetValue("Connection", out connectionHeader) &&
-                string.Equals(connectionHeader, "keep-alive", StringComparison.OrdinalIgnoreCase))
-                BeginRequest();
-            else
-                Dispose();
-        }
-
-        public void RequestClose()
-        {
-            if (_state == ClientState.ReadingProlog) _stream?.Dispose();
-        }
-
-        public void ForceClose() => Dispose();
-
-        public void UnsetParser()
-        {
-            //Debug.Assert(_parser != null);
-
-            _parser = null;
-        }
-
         private void ProcessException(Exception exception)
         {
             if (_disposed) return;
@@ -655,35 +384,300 @@ namespace NHttp
             }
         }
 
-        public void Dispose()
+        private bool ProcessExpectHeader()
         {
-            if (!_disposed)
+            // Process the Expect: 100-continue header.
+
+            string expectHeader;
+
+            if (Headers.TryGetValue("Expect", out expectHeader))
             {
-                _disposed = true;
+                // Remove the expect header for the next run.
 
-                Server.UnregisterClient(this);
+                Headers.Remove("Expect");
 
-                _state = ClientState.Closed;
+                int pos = expectHeader.IndexOf(';');
 
-                _stream?.Dispose();
-                _stream = null;
+                if (pos != -1)
+                    expectHeader = expectHeader.Substring(0, pos).Trim();
 
-                TcpClient?.Close();
-                TcpClient = null;
+                if (!string.Equals("100-continue", expectHeader, StringComparison.OrdinalIgnoreCase))
+                    throw new ProtocolException(string.Format("Could not process Expect header '{0}'", expectHeader));
 
-                Reset();
+                SendContinueResponse();
+                return true;
+            }
+
+            return false;
+        }
+
+        private void ProcessHeaders()
+        {
+            string line;
+
+            while ((line = ReadBuffer.ReadLine()) != null)
+            {
+                // Have we completed receiving the headers?
+
+                if (line.Length == 0)
+                {
+                    // Reset the read buffer which resets the bytes read.
+
+                    ReadBuffer.Reset();
+
+                    // Start processing the body of the request.
+
+                    _state = ClientState.ReadingContent;
+
+                    ProcessContent();
+
+                    return;
+                }
+
+                string[] parts = line.Split(new[] { ':' }, 2);
+
+                if (parts.Length != 2)
+                    throw new ProtocolException("Received header without colon");
+
+                Headers[parts[0].Trim()] = parts[1].Trim();
             }
         }
 
-        private enum ClientState
+        private void ProcessProlog()
         {
-            ReadingProlog,
-            ReadingHeaders,
-            ReadingContent,
-            WritingHeaders,
-            WritingContent,
-            Closed
+            string line = ReadBuffer.ReadLine();
+
+            if (string.IsNullOrEmpty(line)) return;
+
+            // Parse the prolog.
+
+            var match = PrologRegex.Match(line);
+
+            if (!match.Success) throw new ProtocolException(string.Format("Could not parse prolog '{0}'", line));
+
+            Method = match.Groups[1].Value;
+            Request = match.Groups[2].Value;
+            Protocol = match.Groups[3].Value;
+
+            // Continue reading the headers.
+
+            _state = ClientState.ReadingHeaders;
+
+            ProcessHeaders();
+        }
+
+        private void ProcessReadBuffer()
+        {
+            while (_writeStream == null && ReadBuffer.DataAvailable)
+            {
+                switch (_state)
+                {
+                    case ClientState.ReadingProlog:
+                        ProcessProlog();
+                        break;
+
+                    case ClientState.ReadingHeaders:
+                        ProcessHeaders();
+                        break;
+
+                    case ClientState.ReadingContent:
+                        ProcessContent();
+                        break;
+
+                    default:
+                        throw new InvalidOperationException("Invalid state");
+                }
+            }
+
+            if (_writeStream == null) BeginRead();
+        }
+
+        private void ProcessRequestCompleted()
+        {
+            string connectionHeader;
+
+            // Do not accept new requests when the server is stopping.
+
+            if (!_errored &&
+                Server.State == HttpServerState.Started &&
+                Headers.TryGetValue("Connection", out connectionHeader) &&
+                string.Equals(connectionHeader, "keep-alive", StringComparison.OrdinalIgnoreCase))
+                BeginRequest();
+            else
+                Dispose();
+        }
+
+        private void ReadCallback(Task<int> asyncResult)
+        {
+            if (_disposed) return;
+
+            // The below state matches the RequestClose state. Dispose immediately
+            // when this occurs.
+
+            if (_state == ClientState.ReadingProlog && Server.State != HttpServerState.Started)
+            {
+                Dispose();
+                return;
+            }
+
+            try
+            {
+                ReadBuffer.EndRead(asyncResult);
+                if (ReadBuffer.DataAvailable) ProcessReadBuffer();
+                else Dispose();
+            }
+            catch (ObjectDisposedException ex)
+            {
+                Log.Info("Failed to read", ex);
+                Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.Info(ReadBuffer.GetHashCode() + "\tFailed to read from the HTTP connection - ", ex);
+
+                ProcessException(ex);
+            }
+        }
+
+        private void Reset()
+        {
+            _state = ClientState.ReadingProlog;
+            _context = null;
+
+            _parser?.Dispose();
+            _parser = null;
+
+            _writeStream?.Dispose();
+            _writeStream = null;
+
+            InputStream?.Dispose();
+            InputStream = null;
+
+            ReadBuffer.Reset();
+
+            Method = null;
+            Protocol = null;
+            Request = null;
+            Headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            PostParameters = new NameValueCollection();
+
+            MultiPartItems?.ForEach(i => i.Stream?.Dispose());
+            MultiPartItems = null;
+        }
+
+        private void SendContinueResponse()
+        {
+            var sb = new StringBuilder();
+
+            sb.Append(Protocol);
+            sb.Append(" 100 Continue\r\nServer: ");
+            sb.Append(Server.ServerBanner);
+            sb.Append("\r\nDate: ");
+            sb.Append(DateTime.UtcNow.ToString("R"));
+            sb.Append("\r\n\r\n");
+
+            var bytes = Encoding.ASCII.GetBytes(sb.ToString());
+
+            _writeStream?.Dispose();
+
+            _writeStream = new MemoryStream();
+            _writeStream.Write(bytes, 0, bytes.Length);
+            _writeStream.Position = 0;
+
+            BeginWrite();
+        }
+
+        private void WriteCallback()
+        {
+            if (_disposed) return;
+
+            try
+            {
+                if (_writeStream != null && _writeStream.Length != _writeStream.Position)
+                {
+                    // Continue writing from the write stream.
+                    BeginWrite();
+                }
+                else
+                {
+                    if (_writeStream != null)
+                    {
+                        _writeStream.Dispose();
+                        _writeStream = null;
+                    }
+
+                    switch (_state)
+                    {
+                        case ClientState.WritingHeaders:
+                            WriteResponseContent();
+                            break;
+
+                        case ClientState.WritingContent:
+                            ProcessRequestCompleted();
+                            break;
+
+                        default:
+                            Debug.Assert(_state != ClientState.Closed);
+
+                            if (ReadBuffer.DataAvailable)
+                            {
+                                try
+                                {
+                                    ProcessReadBuffer();
+                                }
+                                catch (Exception ex)
+                                {
+                                    ProcessException(ex);
+                                }
+                            }
+                            else BeginRead();
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Info("Failed to write", ex);
+
+                Dispose();
+            }
+        }
+
+        private void WriteHeader(StringBuilder sb, string key, string value)
+        {
+            sb.Append(key);
+            sb.Append(": ");
+            sb.Append(value);
+            sb.Append("\r\n");
+        }
+
+        private void WriteResponseContent()
+        {
+            _writeStream?.Dispose();
+
+            _writeStream = _context.Response.OutputStream.BaseStream;
+            _writeStream.Position = 0;
+
+            _state = ClientState.WritingContent;
+
+            BeginWrite();
+        }
+
+        private void WriteResponseHeaders()
+        {
+            _writeStream?.Dispose();
+
+            var headers = BuildResponseHeaders();
+
+            if (headers != null)
+            {
+                _writeStream = new MemoryStream(headers);
+
+                _state = ClientState.WritingHeaders;
+
+                BeginWrite();
+            }
+            else Dispose();
         }
     }
-	
 }
