@@ -8,6 +8,7 @@ using System.IO;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -53,6 +54,10 @@ namespace NHttp
                 {
                     _stream = new SslStream(_stream, false);
                     ((SslStream)_stream).AuthenticateAsServer(server.ServerCertificate, server.ClientCertificateRequire, server.AllowedSslProtocols, true);
+                }
+                catch (AuthenticationException aex)
+                {
+                    //Suppress SSL_ERROR_SSL due to sslv3 was deprecated by OS.
                 }
                 catch (Exception ex) { Log.Debug(ex); }
         }

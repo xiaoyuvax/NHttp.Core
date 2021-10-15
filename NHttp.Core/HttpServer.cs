@@ -228,7 +228,7 @@ namespace NHttp
 
                 RegisterClient(client);
                 client.BeginRequest();
-            }            
+            }
             catch (Exception ex)
             {
                 Log.Info("Failed to accept TCP client", ex);
