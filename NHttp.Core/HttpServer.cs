@@ -82,7 +82,7 @@ namespace NHttp
 
             ReadBufferSize = 4096;
             WriteBufferSize = 4096;
-            ShutdownTimeout = TimeSpan.FromSeconds(30);
+            ShutdownTimeout = TimeSpan.FromSeconds(5);
             ReadTimeout = TimeSpan.FromSeconds(90);
             WriteTimeout = TimeSpan.FromSeconds(90);
 
@@ -135,6 +135,11 @@ namespace NHttp
                     {
                         var t = _listener?.AcceptTcpClient();
                         AcceptTcpClientCallback(t);
+                    }
+                    catch (SocketException sex) when (sex.SocketErrorCode == SocketError.Interrupted)
+                    {
+                        //Provider friendlier output for SocketError.Interrupted.
+                        Log.Error("Socket interrupted by unexpected reason, such as User pressed Ctl+C.");
                     }
                     catch (Exception ex)
                     {
