@@ -187,7 +187,7 @@ namespace NHttp
             bool forceShutdown = false;
 
             // Clients that are waiting for new requests are closed.
-            _clients.Keys.ToList().ForEach(i => i.RequestClose());
+            foreach (var i in _clients.Keys) i.RequestClose();
 
             // First give all clients a chance to complete their running requests.
             while (_clients.Count > 0)
@@ -208,7 +208,7 @@ namespace NHttp
             // If there are still clients running after the timeout, their
             // connections will be forcibly closed.
 
-            _clients.Keys.ToList().ForEach(i => i.ForceClose());
+            foreach (var i in _clients.Keys) i.ForceClose();
 
             // Wait for the registered clients to be cleared.
 
