@@ -1,8 +1,6 @@
 ﻿using Common.Logging;
 using System;
 using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -13,7 +11,7 @@ using Wima.Log;
 
 namespace NHttp
 {
-    public class HttpServer : IDisposable
+    public class HttpServer : IHttpServer
     {
         private static readonly ILog Log = new LogMan(typeof(HttpServer));
 
@@ -32,12 +30,12 @@ namespace NHttp
 
         public SslProtocols AllowedSslProtocols { get; set; } = (SslProtocols)12288 | SslProtocols.Tls12 | SslProtocols.Tls11;
 
-        public bool SocketReuseAddress = false;
+        public bool SocketReuseAddress { get; set; } = false;
 
         public HttpServerState State
         {
             get => _state;
-            private set
+            set
             {
                 if (_state != value)
                 {
@@ -112,7 +110,6 @@ namespace NHttp
                 EndPoint = (IPEndPoint)listener.LocalEndpoint;
 
                 _listener = listener;
-
 
                 Log.Info(string.Format("HTTP server running at {0}", EndPoint));
             }
@@ -214,7 +211,6 @@ namespace NHttp
 
             while (_clients.Count > 0) _clientsChangedEvent.WaitOne();
         }
-
 
         private void AcceptTcpClientCallback(TcpClient tcpClient)
         {
