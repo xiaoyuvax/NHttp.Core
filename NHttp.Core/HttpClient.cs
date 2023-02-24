@@ -18,7 +18,7 @@ namespace NHttp
 {
     internal class HttpClient : IDisposable
     {
-        private static readonly ILog Log = new LogMan(typeof(HttpClient));
+        private static readonly ILog Log = new WimaLogger(typeof(HttpClient));
 
         private static readonly Regex PrologRegex = new Regex("^([A-Z]+) ([^ ]+) (HTTP/[^ ]+)$", RegexOptions.Compiled);
 

@@ -12,7 +12,7 @@ namespace NHttp
 {
     public class HttpRequest
     {
-        private static readonly ILog Log = new LogMan(typeof(HttpRequest));
+        private static readonly ILog Log = new WimaLogger(typeof(HttpRequest));
 
         private static readonly string[] EmptyStringArray = new string[0];
 

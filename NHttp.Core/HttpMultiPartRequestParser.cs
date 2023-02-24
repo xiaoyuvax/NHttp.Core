@@ -9,7 +9,7 @@ namespace NHttp
 {
     internal class HttpMultiPartRequestParser : HttpRequestParser
     {
-        private static readonly ILog Log = new LogMan(typeof(HttpMultiPartRequestParser));
+        private static readonly ILog Log = new WimaLogger(typeof(HttpMultiPartRequestParser));
         private static readonly byte[] MoreBoundary = Encoding.ASCII.GetBytes("\r\n");
         private static readonly byte[] EndBoundary = Encoding.ASCII.GetBytes("--");
 

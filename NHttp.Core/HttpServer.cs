@@ -13,7 +13,7 @@ namespace NHttp
 {
     public class HttpServer : IHttpServer
     {
-        private static readonly ILog Log = new LogMan(typeof(HttpServer));
+        private static readonly ILog Log = new WimaLogger(typeof(HttpServer));
 
         private bool _disposed;
         private TcpListener _listener;
