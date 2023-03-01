@@ -1,13 +1,10 @@
 # NHttp.Core
-This is a core version of NHttp with SSL support forked from the original base,and was implemented in .net Standard 2.0, as enabled this library can be referenced in both .net framework and .net core applications.
 
 LGPL License.
 
 ## Introduction
 
-NHttp is a very lightweighted,simply asynchronous Web server which supports Http/Https(Http1.1) written in C# for the .NET framework and .NET Core.
-
-It is very ideal for using in lightweighted background program, and its performance, according to my crude benchmark(JMeter), on plain http calls that return json texts, nearly double that of Kestrel.
+NHttp is a very lightweighted, simply asynchronous Web server which supports Http/Https(only http1.1) written in C# implemented in netstandard2.0, and is performance friendly. According to my crude benchmark(JMeter) on plain http api calls that return json texts with the same api implementation(no asp.net core mvc/webapi) on both Nhttp.core and Kestrel, Nttps outperforms nearly double that of Kestrel.
 
     Calls   Resp%    Resp.Time
     Nhttp.Core(h1.1)
@@ -19,6 +16,7 @@ It is very ideal for using in lightweighted background program, and its performa
     500     100%    905
     1000    100%	2691
     1500    100%	3855
+
 
 
 NHttp supports the following features:
