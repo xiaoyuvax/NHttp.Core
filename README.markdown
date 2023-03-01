@@ -5,9 +5,20 @@ LGPL License.
 
 ## Introduction
 
-NHttp is a very lightweighted,simply asynchronous Web server which supports Http/Https written in C# for the .NET framework and .NET Core.
+NHttp is a very lightweighted,simply asynchronous Web server which supports Http/Https(Http1.1) written in C# for the .NET framework and .NET Core.
 
-It is very ideal for using in lightweighted background program(such as a server program) to expose web admin interface.
+It is very ideal for using in lightweighted background program, and its performance, according to my crude benchmark(JMeter), on plain http calls that return json texts, nearly double that of Kestrel.
+
+    Calls   Resp%    Resp.Time
+    Nhttp.Core(h1.1)
+    500     100%     40
+    1000	100%     1255
+    1500	100%     1863
+
+    Kestrel(h2)
+    500     100%    905
+    1000    100%	2691
+    1500    100%	3855
 
 
 NHttp supports the following features:
