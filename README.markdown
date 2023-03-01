@@ -4,7 +4,7 @@ LGPL License.
 
 ## Introduction
 
-NHttp is a very lightweighted, simply asynchronous Web server which supports Http/Https(only http1.1) written in C# implemented in netstandard2.0, and is performance friendly. According to my crude benchmark(JMeter) on plain http api calls that return json texts with the same api implementation(no asp.net core mvc/webapi) on both Nhttp.core and Kestrel, Nttps outperforms nearly double that of Kestrel.
+NHttp is a very lightweighted, simply asynchronous Web server which supports Http/Https(only http1.1) written in C# implemented in netstandard2.0, and is performance friendly. According to my crude benchmark(JMeter) on plain http api calls that return json texts with the same api implementation(no asp.net core mvc/webapi) on both Nhttp.core and Kestrel, Nttps outperforms more than double that of Kestrel.
 
     Calls   Resp%    Resp.Time
     Nhttp.Core(h1.1)
