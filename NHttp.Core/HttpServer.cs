@@ -28,7 +28,7 @@ namespace NHttp
 
         public bool ClientCertificateRequire { get; set; } = false;
 
-        public SslProtocols AllowedSslProtocols { get; set; } = (SslProtocols)12288 | SslProtocols.Tls12 | SslProtocols.Tls11;
+        public SslProtocols AllowedSslProtocols { get; set; } = (SslProtocols)12288 | SslProtocols.Tls12;
 
         public bool SocketReuseAddress { get; set; } = false;
 

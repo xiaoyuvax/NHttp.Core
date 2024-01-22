@@ -11,6 +11,7 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Wima.Log;
 
@@ -36,6 +37,7 @@ namespace NHttp
         private ClientState _state;
         private Stream _stream;
         private MemoryStream _writeStream;
+        private Dictionary<string, string> headers;
 
         public HttpClient(HttpServer server, TcpClient client)
         {
@@ -59,7 +61,7 @@ namespace NHttp
                 {
                     //Suppress SSL_ERROR_SSL due to sslv3 was deprecated by OS.
                 }
-                catch (Exception ex) { Log.Debug(ex); }
+                catch (Exception ex) { Log.Debug("SSLStream Creation Error.", ex); }
         }
 
         private enum ClientState
@@ -72,7 +74,7 @@ namespace NHttp
             Closed
         }
 
-        public Dictionary<string, string> Headers { get; private set; }
+        public Dictionary<string, string> Headers { get => headers; private set => headers = value; }
         public Stream InputStream { get; set; }
         public string Method { get; private set; }
         public List<HttpMultiPartItem> MultiPartItems { get; set; }
@@ -563,7 +565,9 @@ namespace NHttp
             Method = null;
             Protocol = null;
             Request = null;
-            Headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            //Atomic replace old reference with new instance, suspect to be error prone.
+            Interlocked.Exchange(ref headers, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
             PostParameters = new NameValueCollection();
 
             MultiPartItems?.ForEach(i => i.Stream?.Dispose());

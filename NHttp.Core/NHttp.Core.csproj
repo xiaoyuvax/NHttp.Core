@@ -1,33 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-	  <TargetFrameworks>netstandard2.0;net7.0</TargetFrameworks>
-    <RootNamespace>NHttp</RootNamespace>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;net7.0</TargetFrameworks>
+		<RootNamespace>NHttp</RootNamespace>
+		<AssemblyVersion>1.1.1.0</AssemblyVersion>
+		<LangVersion>7.1</LangVersion>
+		<IsAotCompatible>true</IsAotCompatible>
+		<TrimmerRootAssembly>$(AssemblyName)</TrimmerRootAssembly>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <LangVersion>7.1</LangVersion>
-  </PropertyGroup>
+	<ItemGroup>
+		<None Remove="Resources\InternalServerError.html" />
+	</ItemGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <LangVersion>7.1</LangVersion>
-  </PropertyGroup>
+	<ItemGroup>
+		<EmbeddedResource Include="Resources\InternalServerError.html" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Remove="Resources\InternalServerError.html" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Common.Logging.Core" Version="3.4.1" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\InternalServerError.html" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Common.Logging.Core" Version="3.4.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\WMLogService.Core\Wima.Log.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\WMLogService.Core\Wima.Log.csproj" />
+	</ItemGroup>
 
 </Project>
