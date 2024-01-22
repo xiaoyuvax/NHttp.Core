@@ -22,7 +22,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\WMLogService.Core\Wima.Log.csproj" />
+	  <ProjectReference Include="..\Wima.Log\Wima.Log.csproj" />
+	  <ProjectReference Include="..\..\Wima.Log\Wima.Log.csproj" />
 	</ItemGroup>
 
 </Project>
