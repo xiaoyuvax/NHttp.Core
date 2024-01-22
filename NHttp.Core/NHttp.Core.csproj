@@ -23,7 +23,6 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\Wima.Log\Wima.Log.csproj" />
-	  <ProjectReference Include="..\..\Wima.Log\Wima.Log.csproj" />
 	</ItemGroup>
 
 </Project>
