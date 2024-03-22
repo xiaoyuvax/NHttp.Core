@@ -13,13 +13,12 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Wima.Log;
 
 namespace NHttp
 {
     internal class HttpClient : IDisposable
     {
-        private static readonly ILog Log = new WimaLogger(typeof(HttpClient));
+        private ILog _logger;
 
         private static readonly Regex PrologRegex = new Regex("^([A-Z]+) ([^ ]+) (HTTP/[^ ]+)$", RegexOptions.Compiled);
 
@@ -28,19 +27,20 @@ namespace NHttp
         private bool _disposed;
         private bool _errored;
         private HttpRequestParser _parser;
+
         /// <summary>
         /// Store the TCP Socket reference might be better than TcpClient, so to force disposing the socket.
         /// </summary>
         private Socket _socket;
-
 
         private ClientState _state;
         private Stream _stream;
         private MemoryStream _writeStream;
         private Dictionary<string, string> headers;
 
-        public HttpClient(HttpServer server, TcpClient client)
+        public HttpClient(HttpServer server, TcpClient client, ILog logger)
         {
+            _logger = logger;
             if (server == null) throw new ArgumentNullException("server");
             if (client == null) throw new ArgumentNullException("client");
 
@@ -61,7 +61,7 @@ namespace NHttp
                 {
                     //Suppress SSL_ERROR_SSL due to sslv3 was deprecated by OS.
                 }
-                catch (Exception ex) { Log.Debug("SSLStream Creation Error.", ex); }
+                catch (Exception ex) { _logger.Debug("\tSSLStream Creation Error.", ex); }
         }
 
         private enum ClientState
@@ -95,6 +95,7 @@ namespace NHttp
         public EndPoint TcpClientRemoteEndPoint => _socket?.RemoteEndPoint;
 
         public bool UseSSL => _stream is SslStream;
+
         public void BeginRequest()
         {
             Reset();
@@ -125,7 +126,7 @@ namespace NHttp
         {
             _context = new HttpContext(this);
 
-            Log.Debug(string.Format("{0}\t{1}\t{2}\t{3}", TcpClientRemoteEndPoint.ToString(), _context.Request.HttpMethod, _context.Request.RawUrl, _context.Request.Headers.Get("User-Agent")));
+            _logger.Debug(string.Format("{0}\t{1}\t{2}\t{3}", TcpClientRemoteEndPoint.ToString(), _context.Request.HttpMethod, _context.Request.RawUrl, _context.Request.Headers.Get("User-Agent")));
 
             Server.RaiseRequest(_context);
 
@@ -159,7 +160,7 @@ namespace NHttp
             }
             catch (Exception ex)
             {
-                Log.Info(ReadBuffer.GetHashCode() + "\tReadAsync failed - ", ex);
+                _logger.Info(ReadBuffer.GetHashCode() + "\tReadAsync failed - ", ex);
                 Dispose();
             }
         }
@@ -178,7 +179,7 @@ namespace NHttp
             }
             catch (Exception ex)
             {
-                Log.Info("BeginWrite failed", ex);
+                _logger.Info("BeginWrite failed", ex);
                 Dispose();
             }
         }
@@ -385,7 +386,7 @@ namespace NHttp
             }
             catch (Exception ex)
             {
-                Log.Info("Failed to process internal server error response", ex);
+                _logger.Info("Failed to process internal server error response", ex);
 
                 Dispose();
             }
@@ -535,12 +536,12 @@ namespace NHttp
             }
             catch (ObjectDisposedException ex)
             {
-                Log.Info("Failed to read", ex);
+                _logger.Info("Failed to read", ex);
                 Dispose();
             }
             catch (Exception ex)
             {
-                Log.Info(ReadBuffer.GetHashCode() + "\tFailed to read from the HTTP connection - ", ex);
+                _logger.Info(ReadBuffer.GetHashCode() + "\tFailed to read from the HTTP connection - ", ex);
 
                 ProcessException(ex);
             }
@@ -646,7 +647,7 @@ namespace NHttp
             }
             catch (Exception ex)
             {
-                Log.Info("Failed to write", ex);
+                _logger.Info("Failed to write", ex);
 
                 Dispose();
             }

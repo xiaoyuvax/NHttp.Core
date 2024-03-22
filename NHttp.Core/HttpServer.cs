@@ -7,13 +7,12 @@ using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
-using Wima.Log;
 
 namespace NHttp
 {
     public class HttpServer : IHttpServer
     {
-        private static readonly ILog Log = new WimaLogger(typeof(HttpServer));
+        private ILog _logger;
 
         private bool _disposed;
         private TcpListener _listener;
@@ -74,8 +73,9 @@ namespace NHttp
 
         internal HttpTimeoutManager TimeoutManager { get; private set; }
 
-        public HttpServer()
+        public HttpServer(ILog logger)
         {
+            _logger = logger;
             EndPoint = new IPEndPoint(IPAddress.Loopback, 0);
 
             ReadBufferSize = 4096;
@@ -93,7 +93,7 @@ namespace NHttp
 
             State = HttpServerState.Starting;
 
-            Log.Debug(string.Format("Starting HTTP server at {0}", EndPoint));
+            _logger.Debug(string.Format("[HttpServer]\tStarting HTTP server at {0}", EndPoint));
 
             TimeoutManager = new HttpTimeoutManager(this);
 
@@ -111,15 +111,15 @@ namespace NHttp
 
                 _listener = listener;
 
-                Log.Info(string.Format("HTTP server running at {0}", EndPoint));
+                _logger.Info(string.Format("[HttpServer]\trunning at {0}", EndPoint));
             }
             catch (Exception ex)
             {
                 State = HttpServerState.Stopped;
 
-                Log.Error("Failed to start HTTP server", ex);
+                _logger.Error("[HttpServer]\tFailed to start!", ex);
 
-                throw new NHttpException("Failed to start HTTP server", ex);
+                throw new NHttpException("[HttpServer]\tFailed to start!", ex);
             }
 
             State = HttpServerState.Started;
@@ -136,11 +136,11 @@ namespace NHttp
                     catch (SocketException sex) when (sex.SocketErrorCode == SocketError.Interrupted)
                     {
                         //Provider friendlier output for SocketError.Interrupted.
-                        Log.Error("Socket interrupted by unexpected reason, such as User pressed Ctl+C.");
+                        _logger.Error("[HttpServer]\tSocket interrupted by unexpected reason, such as User pressed Ctl+C.");
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex);
+                        _logger.Error("[HttpServer]\t", ex);
                     }
                 }
             });
@@ -150,7 +150,7 @@ namespace NHttp
         {
             if (!VerifyState(HttpServerState.Started)) return;
 
-            Log.Debug("Stopping HTTP server...");
+            _logger.Debug("[HttpServer]\tStopping...");
 
             State = HttpServerState.Stopping;
 
@@ -164,9 +164,9 @@ namespace NHttp
             }
             catch (Exception ex)
             {
-                Log.Error("Failed to stop HTTP server", ex);
+                _logger.Error("[HttpServer]\tFailed to stop!", ex);
 
-                throw new NHttpException("Failed to stop HTTP server", ex);
+                throw new NHttpException("[HttpServer]\tFailed to stop!", ex);
             }
             finally
             {
@@ -174,7 +174,7 @@ namespace NHttp
 
                 State = HttpServerState.Stopped;
 
-                Log.Info("Stopped HTTP server");
+                _logger.Info("[HttpServer]\tStopped.");
             }
         }
 
@@ -225,14 +225,14 @@ namespace NHttp
 
             try
             {
-                var client = new HttpClient(this, tcpClient);
+                var client = new HttpClient(this, tcpClient, _logger);
 
                 RegisterClient(client);
                 client.BeginRequest();
             }
             catch (Exception ex)
             {
-                Log.Info("Failed to accept TCP client", ex);
+                _logger.Info("[HttpServer]\tFailed to accept TCP client", ex);
             }
         }
 

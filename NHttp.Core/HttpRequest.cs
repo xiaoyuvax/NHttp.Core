@@ -12,8 +12,6 @@ namespace NHttp
 {
     public class HttpRequest
     {
-        private static readonly ILog Log = new WimaLogger(typeof(HttpRequest));
-
         private static readonly string[] EmptyStringArray = new string[0];
 
         public string[] AcceptTypes { get; private set; }
@@ -209,7 +207,7 @@ namespace NHttp
 
                 if (name == null)
                 {
-                    Log.Info("Received multipart item without name");
+                    //Log.Info("Received multipart item without name");
                     continue;
                 }
 
