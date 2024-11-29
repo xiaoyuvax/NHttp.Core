@@ -1,9 +1,7 @@
-﻿using Common.Logging;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Wima.Log;
 
 namespace NHttp
 {

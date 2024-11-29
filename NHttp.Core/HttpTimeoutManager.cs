@@ -32,7 +32,6 @@ namespace NHttp
             });
         }
 
-
         private void ProcessQueue(TimeoutQueue queue)
         {
             while (true)

@@ -21,8 +21,4 @@
 		<PackageReference Include="Common.Logging.Core" Version="3.4.1" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <ProjectReference Include="..\Wima.Log\Wima.Log.csproj" />
-	</ItemGroup>
-
 </Project>

@@ -262,6 +262,8 @@ namespace NHttp
 
                 _disposed = true;
             }
+
+            GC.SuppressFinalize(this);
         }
 
         internal void RaiseRequest(HttpContext context)
