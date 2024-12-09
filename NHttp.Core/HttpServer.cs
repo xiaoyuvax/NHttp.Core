@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace NHttp
 {
-    public class HttpServer : IHttpServer
+    public class HttpServer : IDisposable
     {
         private ILog _logger;
 
