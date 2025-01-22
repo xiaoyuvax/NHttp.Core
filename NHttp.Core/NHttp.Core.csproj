@@ -1,12 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
+		<TargetFrameworks>net9.0;netstandard2.0</TargetFrameworks>
 		<RootNamespace>NHttp</RootNamespace>
-		<AssemblyVersion>1.1.1.1</AssemblyVersion>
+		<AssemblyVersion>1.1.1.2</AssemblyVersion>
 		<LangVersion>7.1</LangVersion>
-		<IsAotCompatible>true</IsAotCompatible>
 		<TrimmerRootAssembly>$(AssemblyName)</TrimmerRootAssembly>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(TargetFramework)'!='netstandard2.0'">
+		<IsAotCompatible>true</IsAotCompatible>
 	</PropertyGroup>
 
 	<ItemGroup>
