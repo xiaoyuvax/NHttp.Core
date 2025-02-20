@@ -1,11 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net9.0;netstandard2.0</TargetFrameworks>
+		<TargetFrameworks>net9.0;net8.0;netstandard2.0</TargetFrameworks>
 		<RootNamespace>NHttp</RootNamespace>
 		<AssemblyVersion>1.1.1.2</AssemblyVersion>
 		<LangVersion>7.1</LangVersion>
+		<Version>1.1.1.201</Version>
+		<PackageOutputPath>d:\pub\nuget packages\</PackageOutputPath>
 		<TrimmerRootAssembly>$(AssemblyName)</TrimmerRootAssembly>
+		<Description>A very light weighted Web Server for simple and fast http1.1 webservice.</Description>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageProjectUrl></PackageProjectUrl>
+		<Title>$(AssemblyName)</Title>
+		<PackageTags>webserver,http,http1.1,lightweight</PackageTags>
+		<RepositoryUrl>https://github.com/xiaoyuvax/NHttp.Core</RepositoryUrl>		
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(TargetFramework)'!='netstandard2.0'">
@@ -18,6 +27,17 @@
 
 	<ItemGroup>
 		<EmbeddedResource Include="Resources\InternalServerError.html" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Include="..\LICENSE" Link="LICENSE">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	  <None Include="..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
 	</ItemGroup>
 
 	<ItemGroup>
