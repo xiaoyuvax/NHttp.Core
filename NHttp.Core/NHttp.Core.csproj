@@ -3,9 +3,9 @@
 	<PropertyGroup>
 		<TargetFrameworks>net10.0;net9.0;net8.0;netstandard2.0</TargetFrameworks>
 		<RootNamespace>NHttp</RootNamespace>
-		<AssemblyVersion>1.1.1.2</AssemblyVersion>
+		<AssemblyVersion>1.1.2.0</AssemblyVersion>
 		<LangVersion>7.1</LangVersion>
-		<Version>1.1.1.201</Version>
+		<Version>1.1.2.201</Version>
 		<PackageOutputPath>d:\pub\nuget packages\</PackageOutputPath>
 		<TrimmerRootAssembly>$(AssemblyName)</TrimmerRootAssembly>
 		<Description>A very light weighted Web Server for simple and fast http1.1 webservice.</Description>
