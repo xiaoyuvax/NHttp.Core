@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -16,12 +16,12 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void SingleRequest()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {
                     Assert.That(e.Request.QueryString.AllKeys, Is.EquivalentTo(new[] { "key" }));
-                    Assert.AreEqual("value", e.Request.QueryString["key"]);
+                    Assert.That(e.Request.QueryString["key"], Is.EqualTo("value"));
 
                     using (var writer = new StreamWriter(e.Response.OutputStream))
                     {
@@ -35,20 +35,20 @@ namespace NHttp.Test.WebRequestFixtures
                     String.Format("http://{0}/?key=value", server.EndPoint)
                 );
 
-                Assert.AreEqual(ResponseText, GetResponseFromRequest(request));
+                Assert.That(GetResponseFromRequest(request), Is.EqualTo(ResponseText));
             }
         }
 
         [Test]
         public void QueryStringKeyWithMultipleValues()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {
                     Assert.That(e.Request.QueryString.AllKeys, Is.EquivalentTo(new[] { "key" }));
                     Assert.That(e.Request.QueryString.GetValues("key"), Is.EquivalentTo(new[] { "first", "second", "third" }));
-                    Assert.AreEqual(e.Request.QueryString["key"], "first,second,third");
+                    Assert.That("first,second,third", Is.EqualTo(e.Request.QueryString["key"]));
 
                     using (var writer = new StreamWriter(e.Response.OutputStream))
                     {
@@ -62,16 +62,16 @@ namespace NHttp.Test.WebRequestFixtures
                     String.Format("http://{0}/?key=first&key=second&key=third", server.EndPoint)
                 );
 
-                Assert.AreEqual(ResponseText, GetResponseFromRequest(request));
+                Assert.That(GetResponseFromRequest(request), Is.EqualTo(ResponseText));
             }
         }
 
         [Test]
         public void NoInputStreamWithGet()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
-                server.RequestReceived += (s, e) => Assert.IsNull(e.Request.InputStream);
+                server.RequestReceived += (s, e) => Assert.That(e.Request.InputStream, Is.Null);
 
                 server.Start();
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,7 +15,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void MultiPartWithoutBoundary()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.Start();
 
@@ -34,7 +34,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void MultiPartWithoutContent()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.Start();
 
@@ -99,7 +99,7 @@ namespace NHttp.Test.WebRequestFixtures
 
         private void TestMultiPartUpload(string post)
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.Start();
 

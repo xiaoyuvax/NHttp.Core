@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -14,7 +14,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void RelativeRedirect()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) => e.Response.Redirect("target");
 
@@ -32,8 +32,8 @@ namespace NHttp.Test.WebRequestFixtures
                         "http://{0}/source/target", server.EndPoint
                     );
 
-                    Assert.AreEqual(HttpStatusCode.Found, response.StatusCode);
-                    Assert.AreEqual(redirectLocation, response.Headers["Location"]);
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Found));
+                    Assert.That(response.Headers["Location"], Is.EqualTo(redirectLocation));
                 }
             }
         }
@@ -41,7 +41,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void AbsoluteRedirect()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) => e.Response.Redirect("/target");
 
@@ -59,8 +59,8 @@ namespace NHttp.Test.WebRequestFixtures
                         "http://{0}/target", server.EndPoint
                     );
 
-                    Assert.AreEqual(HttpStatusCode.Found, response.StatusCode);
-                    Assert.AreEqual(redirectLocation, response.Headers["Location"]);
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Found));
+                    Assert.That(response.Headers["Location"], Is.EqualTo(redirectLocation));
                 }
             }
         }
@@ -68,7 +68,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void PermanentRedirect()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) => e.Response.RedirectPermanent("target");
 
@@ -86,8 +86,8 @@ namespace NHttp.Test.WebRequestFixtures
                         "http://{0}/source/target", server.EndPoint
                     );
 
-                    Assert.AreEqual(HttpStatusCode.MovedPermanently, response.StatusCode);
-                    Assert.AreEqual(redirectLocation, response.Headers["Location"]);
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.MovedPermanently));
+                    Assert.That(response.Headers["Location"], Is.EqualTo(redirectLocation));
                 }
             }
         }

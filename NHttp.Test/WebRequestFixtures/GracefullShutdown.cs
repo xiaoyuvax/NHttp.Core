@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -13,10 +13,9 @@ namespace NHttp.Test.WebRequestFixtures
     public class GracefullShutdown : FixtureBase
     {
         [Test]
-        [ExpectedException(typeof(WebException))]
         public void ForcedShutdown()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.ShutdownTimeout = TimeSpan.FromSeconds(1);
 
@@ -42,7 +41,7 @@ namespace NHttp.Test.WebRequestFixtures
                     String.Format("http://{0}/", server.EndPoint)
                 );
 
-                GetResponseFromRequest(request);
+                Assert.Throws<WebException>(() => GetResponseFromRequest(request));
             }
         }
     }

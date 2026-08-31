@@ -146,6 +146,21 @@ namespace NHttp
             closed = true;
         }
 
+        /// <summary>
+        /// Releases the unmanaged resources used by the Stream and optionally releases the managed resources.
+        /// </summary>
+        /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && !closed)
+            {
+                stream.Flush();
+                // Don't dispose the underlying MemoryStream to allow reading the response after close
+            }
+            closed = true;
+            base.Dispose(disposing);
+        }
+
         ///// <summary>
         ///// Throws a NotSupportedException.
         ///// </summary>

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Common.Logging;
+using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
@@ -8,17 +9,21 @@ namespace NHttp
 {
     internal class HttpTimeoutManager : IDisposable
     {
+        private readonly ILog _logger;
         private Task _thread;
         private ManualResetEvent _closeEvent = new ManualResetEvent(false);
 
         public TimeoutQueue ReadQueue { get; private set; }
         public TimeoutQueue WriteQueue { get; private set; }
 
-        public HttpTimeoutManager(HttpServer server)
+        public HttpTimeoutManager(HttpServer server, ILog logger)
         {
             if (server == null)
                 throw new ArgumentNullException(nameof(server));
+            if (logger == null)
+                throw new ArgumentNullException(nameof(logger));
 
+            _logger = logger;
             ReadQueue = new TimeoutQueue(server.ReadTimeout);
             WriteQueue = new TimeoutQueue(server.WriteTimeout);
 
@@ -45,7 +50,10 @@ namespace NHttp
                     {
                         item.Disposable.Dispose();
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logger.Debug("Failed to dispose timed-out item", ex);
+                    }
                 }
             }
         }

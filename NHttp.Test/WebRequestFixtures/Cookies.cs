@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -18,7 +18,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void SetCookie()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {
@@ -35,18 +35,18 @@ namespace NHttp.Test.WebRequestFixtures
 
                 using (var response = (HttpWebResponse)request.GetResponse())
                 {
-                    Assert.AreEqual("a=b; path=/", response.Headers["Set-Cookie"]);
-                    Assert.AreEqual(1, response.Cookies.Count);
+                    Assert.That(response.Headers["Set-Cookie"], Is.EqualTo("a=b; path=/"));
+                    Assert.That(response.Cookies.Count, Is.EqualTo(1));
 
                     var cookie = response.Cookies[0];
 
-                    Assert.AreEqual("a", cookie.Name);
-                    Assert.AreEqual("b", cookie.Value);
-                    Assert.AreEqual("/", cookie.Path);
-                    Assert.AreEqual(server.EndPoint.Address.ToString(), cookie.Domain);
-                    Assert.AreEqual(DateTime.MinValue, cookie.Expires);
-                    Assert.AreEqual(false, cookie.HttpOnly);
-                    Assert.AreEqual(false, cookie.Secure);
+                    Assert.That(cookie.Name, Is.EqualTo("a"));
+                    Assert.That(cookie.Value, Is.EqualTo("b"));
+                    Assert.That(cookie.Path, Is.EqualTo("/"));
+                    Assert.That(cookie.Domain, Is.EqualTo(server.EndPoint.Address.ToString()));
+                    Assert.That(cookie.Expires, Is.EqualTo(DateTime.MinValue));
+                    Assert.That(cookie.HttpOnly, Is.EqualTo(false));
+                    Assert.That(cookie.Secure, Is.EqualTo(false));
                 }
             }
         }
@@ -54,7 +54,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void SetCookieWithDetails()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 var expires = DateTime.Now + TimeSpan.FromDays(1);
 
@@ -82,18 +82,18 @@ namespace NHttp.Test.WebRequestFixtures
 
                 using (var response = (HttpWebResponse)request.GetResponse())
                 {
-                    Assert.AreEqual("a=b; expires=" + expires.ToString(DateFormat, DateCulture) + "; path=/path; secure; HttpOnly", response.Headers["Set-Cookie"]);
+                    Assert.That(response.Headers["Set-Cookie"], Is.EqualTo("a=b; expires=" + expires.ToString(DateFormat, DateCulture) + "; path=/path; secure; HttpOnly"));
  
-                    Assert.AreEqual(1, response.Cookies.Count);
+                    Assert.That(response.Cookies.Count, Is.EqualTo(1));
 
                     var cookie = response.Cookies[0];
 
-                    Assert.AreEqual("a", cookie.Name);
-                    Assert.AreEqual("b", cookie.Value);
-                    Assert.AreEqual("/path", cookie.Path);
-                    Assert.AreEqual(expires.ToString(CultureInfo.InvariantCulture), cookie.Expires.ToUniversalTime().ToString(CultureInfo.InvariantCulture));
-                    Assert.AreEqual(true, cookie.HttpOnly);
-                    Assert.AreEqual(true, cookie.Secure);
+                    Assert.That(cookie.Name, Is.EqualTo("a"));
+                    Assert.That(cookie.Value, Is.EqualTo("b"));
+                    Assert.That(cookie.Path, Is.EqualTo("/path"));
+                    Assert.That(cookie.Expires.ToUniversalTime().ToString(CultureInfo.InvariantCulture), Is.EqualTo(expires.ToString(CultureInfo.InvariantCulture)));
+                    Assert.That(cookie.HttpOnly, Is.EqualTo(true));
+                    Assert.That(cookie.Secure, Is.EqualTo(true));
                 }
             }
         }
@@ -101,7 +101,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void SetCookieWithDomain()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 var expires = DateTime.Now + TimeSpan.FromDays(1);
 
@@ -124,7 +124,7 @@ namespace NHttp.Test.WebRequestFixtures
 
                 using (var response = (HttpWebResponse)request.GetResponse())
                 {
-                    Assert.AreEqual("a=b; domain=example.com; path=/", response.Headers["Set-Cookie"]);
+                    Assert.That(response.Headers["Set-Cookie"], Is.EqualTo("a=b; domain=example.com; path=/"));
                 }
             }
         }
@@ -132,7 +132,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void SetMultipleCookies()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {
@@ -150,9 +150,9 @@ namespace NHttp.Test.WebRequestFixtures
 
                 using (var response = (HttpWebResponse)request.GetResponse())
                 {
-                    Assert.AreEqual("a=b; path=/,c=d; path=/", response.Headers["Set-Cookie"]);
+                    Assert.That(response.Headers["Set-Cookie"], Is.EqualTo("a=b; path=/, c=d; path=/"));
 
-                    Assert.AreEqual(2, response.Cookies.Count);
+                    Assert.That(response.Cookies.Count, Is.EqualTo(2));
 
                     for (int i = 0; i < response.Cookies.Count; i++)
                     {
@@ -161,13 +161,13 @@ namespace NHttp.Test.WebRequestFixtures
                         switch (i)
                         {
                             case 0:
-                                Assert.AreEqual("a", cookie.Name);
-                                Assert.AreEqual("b", cookie.Value);
+                                Assert.That(cookie.Name, Is.EqualTo("a"));
+                                Assert.That(cookie.Value, Is.EqualTo("b"));
                                 break;
 
                             case 1:
-                                Assert.AreEqual("c", cookie.Name);
-                                Assert.AreEqual("d", cookie.Value);
+                                Assert.That(cookie.Name, Is.EqualTo("c"));
+                                Assert.That(cookie.Value, Is.EqualTo("d"));
                                 break;
                         }
                     }
@@ -186,7 +186,7 @@ namespace NHttp.Test.WebRequestFixtures
                 p =>
                 {
                     Assert.That(p.Request.Cookies.AllKeys, Is.EquivalentTo(new[] { "a" }));
-                    Assert.AreEqual("b", p.Request.Cookies["a"].Value);
+                    Assert.That(p.Request.Cookies["a"].Value, Is.EqualTo("b"));
                 }
             );
         }
@@ -203,7 +203,7 @@ namespace NHttp.Test.WebRequestFixtures
                 p =>
                 {
                     Assert.That(p.Request.Cookies.AllKeys, Is.EquivalentTo(new[] { "a" }));
-                    Assert.AreEqual("c", p.Request.Cookies["a"].Value);
+                    Assert.That(p.Request.Cookies["a"].Value, Is.EqualTo("c"));
                 }
             );
         }
@@ -220,8 +220,8 @@ namespace NHttp.Test.WebRequestFixtures
                 {
                     Assert.That(p.Request.Cookies.AllKeys, Is.EquivalentTo(new[] { "a" }));
                     Assert.That(p.Request.Cookies["a"].Values.AllKeys, Is.EquivalentTo(new[] { "a", null, "c" }));
-                    Assert.AreEqual("b", p.Request.Cookies["a"].Values["a"]);
-                    Assert.AreEqual(null, p.Request.Cookies["a"].Values["c"]);
+                    Assert.That(p.Request.Cookies["a"].Values["a"], Is.EqualTo("b"));
+                    Assert.That(p.Request.Cookies["a"].Values["c"], Is.EqualTo(null));
                 }
             );
         }
@@ -239,8 +239,8 @@ namespace NHttp.Test.WebRequestFixtures
                 {
                     Assert.That(p.Request.Cookies.AllKeys, Is.EquivalentTo(new[] { "a" }));
                     Assert.That(p.Request.Cookies["a"].Values.AllKeys, Is.EquivalentTo(new[] { "a", "c" }));
-                    Assert.AreEqual("b", p.Request.Cookies["a"].Values["a"]);
-                    Assert.AreEqual("d", p.Request.Cookies["a"].Values["c"]);
+                    Assert.That(p.Request.Cookies["a"].Values["a"], Is.EqualTo("b"));
+                    Assert.That(p.Request.Cookies["a"].Values["c"], Is.EqualTo("d"));
                 }
             );
         }
@@ -257,15 +257,15 @@ namespace NHttp.Test.WebRequestFixtures
                 {
                     Assert.That(p.Request.Cookies.AllKeys, Is.EquivalentTo(new[] { "a" }));
                     Assert.That(p.Request.Cookies["a"].Values.AllKeys, Is.EquivalentTo(new[] { "a", "c" }));
-                    Assert.AreEqual("b", p.Request.Cookies["a"].Values["a"]);
-                    Assert.AreEqual("d", p.Request.Cookies["a"].Values["c"]);
+                    Assert.That(p.Request.Cookies["a"].Values["a"], Is.EqualTo("b"));
+                    Assert.That(p.Request.Cookies["a"].Values["c"], Is.EqualTo("d"));
                 }
             );
         }
 
         private void TestCookieRoundtrip(Action<HttpContext> fromCallback, Action<HttpContext> toCallback)
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {

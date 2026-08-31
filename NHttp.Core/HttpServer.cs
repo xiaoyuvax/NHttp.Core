@@ -18,7 +18,7 @@ namespace NHttp
         private TcpListener _listener;
         private readonly object _syncLock = new object();
         private readonly ConcurrentDictionary<HttpClient, bool> _clients = new ConcurrentDictionary<HttpClient, bool>();
-        private HttpServerState _state = HttpServerState.Stopped;
+        private volatile HttpServerState _state = HttpServerState.Stopped;
         private AutoResetEvent _clientsChangedEvent = new AutoResetEvent(false);
 
         public X509Certificate ServerCertificate { get; set; }
@@ -71,6 +71,12 @@ namespace NHttp
 
         public TimeSpan ShutdownTimeout { get; set; }
 
+        public int MaxRequestUrlLength { get; set; } = 2048;
+
+        public int MaxRequestHeadersSize { get; set; } = 16384;
+
+        public int MaxRequestContentSize { get; set; } = 10485760;
+
         internal HttpTimeoutManager TimeoutManager { get; private set; }
 
         public HttpServer(ILog logger)
@@ -95,7 +101,7 @@ namespace NHttp
 
             _logger.Debug(string.Format("[HttpServer]\tStarting HTTP server at {0}", EndPoint));
 
-            TimeoutManager = new HttpTimeoutManager(this);
+            TimeoutManager = new HttpTimeoutManager(this, _logger);
 
             // Start the listener.
 
@@ -197,7 +203,7 @@ namespace NHttp
                     break;
                 }
 
-                _clientsChangedEvent.WaitOne(ShutdownTimeout - shutdownRunning);
+                _clientsChangedEvent?.WaitOne(ShutdownTimeout - shutdownRunning);
             }
 
             if (!forceShutdown) return;
@@ -209,12 +215,14 @@ namespace NHttp
 
             // Wait for the registered clients to be cleared.
 
-            while (_clients.Count > 0) _clientsChangedEvent.WaitOne();
+            while (_clients.Count > 0) _clientsChangedEvent?.WaitOne();
         }
 
         private void AcceptTcpClientCallback(TcpClient tcpClient)
         {
-            if (_listener == null) return;
+            // Capture the current listener reference to avoid race conditions
+            var listener = _listener;
+            if (listener == null) return;
             // If we've stopped already, close the TCP client now.
 
             if (_state != HttpServerState.Started)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,7 +17,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void TestExceptionInHandler()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {
@@ -37,7 +37,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void HandledHandlerException()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {
@@ -60,14 +60,14 @@ namespace NHttp.Test.WebRequestFixtures
                     String.Format("http://{0}/", server.EndPoint)
                 );
 
-                Assert.AreEqual(ErrorMessage, GetResponseFromRequest(request));
+                Assert.That(GetResponseFromRequest(request), Is.EqualTo(ErrorMessage));
             }
         }
 
         [Test]
         public void HandledHandlerExceptionWithoutOutput()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {
@@ -88,13 +88,13 @@ namespace NHttp.Test.WebRequestFixtures
 
                 using (var response = (HttpWebResponse)request.GetResponse())
                 {
-                    Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-                    Assert.AreEqual("OK", response.StatusDescription);
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                    Assert.That(response.StatusDescription, Is.EqualTo("OK"));
 
                     using (var stream = response.GetResponseStream())
                     using (var reader = new StreamReader(stream))
                     {
-                        Assert.IsEmpty(reader.ReadToEnd());
+                        Assert.That(reader.ReadToEnd(), Is.Empty);
                     }
                 }
             }

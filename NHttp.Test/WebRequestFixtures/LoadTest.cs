@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -20,7 +20,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void MultipleSmallConsecutiveRequests()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {
@@ -38,7 +38,7 @@ namespace NHttp.Test.WebRequestFixtures
                         String.Format("http://{0}/", server.EndPoint)
                     );
 
-                    Assert.AreEqual(Payload, GetResponseFromRequest(request));
+                    Assert.That(GetResponseFromRequest(request), Is.EqualTo(Payload));
                 }
             }
         }
@@ -46,7 +46,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void MultipleLargeConsecutiveRequests()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) => WriteRandomData(e.Response.OutputStream, LargeResponseSize);
 
@@ -61,7 +61,7 @@ namespace NHttp.Test.WebRequestFixtures
                     using (var response = request.GetResponse())
                     using (var stream = response.GetResponseStream())
                     {
-                        Assert.AreEqual(LargeResponseSize, stream.GetLength());
+                        Assert.That(stream.GetLength(), Is.EqualTo(LargeResponseSize));
                     }
                 }
             }
@@ -70,7 +70,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void MultipleSmallParallelRequests()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {
@@ -96,7 +96,7 @@ namespace NHttp.Test.WebRequestFixtures
                                 String.Format("http://{0}/", server.EndPoint)
                             );
 
-                            Assert.AreEqual(Payload, GetResponseFromRequest(request));
+                            Assert.That(GetResponseFromRequest(request), Is.EqualTo(Payload));
                         }
 
                         lock (syncLock)
@@ -123,7 +123,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void MultipleLargeParallelRequests()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) => WriteRandomData(e.Response.OutputStream, LargeResponseSize);
 
@@ -146,7 +146,7 @@ namespace NHttp.Test.WebRequestFixtures
                             using (var response = request.GetResponse())
                             using (var stream = response.GetResponseStream())
                             {
-                                Assert.AreEqual(LargeResponseSize, stream.GetLength());
+                        Assert.That(stream.GetLength(), Is.EqualTo(LargeResponseSize));
                             }
                         }
 

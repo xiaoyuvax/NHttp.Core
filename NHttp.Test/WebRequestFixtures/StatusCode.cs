@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -14,7 +14,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void NotFound()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {
@@ -35,8 +35,8 @@ namespace NHttp.Test.WebRequestFixtures
                 {
                     var response = (HttpWebResponse)ex.Response;
 
-                    Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
-                    Assert.AreEqual("Not Found", response.StatusDescription);
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+                    Assert.That(response.StatusDescription, Is.EqualTo("Not Found"));
                 }
             }
         }
@@ -44,7 +44,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void ExceptionOnRequestReceived()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {
@@ -65,8 +65,8 @@ namespace NHttp.Test.WebRequestFixtures
                 {
                     var response = (HttpWebResponse)ex.Response;
 
-                    Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
-                    Assert.AreEqual("Internal Server Error", response.StatusDescription);
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.InternalServerError));
+                    Assert.That(response.StatusDescription, Is.EqualTo("Internal Server Error"));
                 }
             }
         }

@@ -13,10 +13,11 @@ namespace NHttp.Test.Support
     {
         private readonly Random _random = new Random();
 
-        [TestFixtureSetUp]
+        protected static readonly ILog Logger = new NoOpLogger();
+
+        [OneTimeSetUp]
         public void SetupFixture()
         {
-            LogManager.Adapter = new ConsoleOutLoggerFactoryAdapter();
         }
 
         protected void WriteRandomData(Stream stream, int bytes)
@@ -51,7 +52,7 @@ namespace NHttp.Test.Support
             {
                 var response = (HttpWebResponse)ex.Response;
 
-                Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.InternalServerError));
             }
         }
     }

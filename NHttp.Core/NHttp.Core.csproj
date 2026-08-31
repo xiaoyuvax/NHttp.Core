@@ -3,10 +3,10 @@
 	<PropertyGroup>
 		<TargetFrameworks>net10.0;net9.0;net8.0;netstandard2.0</TargetFrameworks>
 		<RootNamespace>NHttp</RootNamespace>
-		<AssemblyVersion>1.1.2.0</AssemblyVersion>
-		<LangVersion>7.1</LangVersion>
-		<Version>1.1.2.201</Version>
-		<PackageOutputPath>d:\pub\nuget packages\</PackageOutputPath>
+		<AssemblyVersion>1.2.0.0</AssemblyVersion>
+		<LangVersion>12.0</LangVersion>
+		<Version>1.2.0.300</Version>
+		<PackageOutputPath>$(BaseOutputPath)packages</PackageOutputPath>
 		<TrimmerRootAssembly>$(AssemblyName)</TrimmerRootAssembly>
 		<Description>A very light weighted Web Server for simple and fast http1.1 webservice.</Description>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -20,6 +20,12 @@
 	<PropertyGroup Condition="'$(TargetFramework)'!='netstandard2.0'">
 		<IsAotCompatible>true</IsAotCompatible>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+			<_Parameter1>NHttp.Test</_Parameter1>
+		</AssemblyAttribute>
+	</ItemGroup>
 
 	<ItemGroup>
 		<None Remove="Resources\InternalServerError.html" />
@@ -42,6 +48,10 @@
 
 	<ItemGroup>
 		<PackageReference Include="Common.Logging.Core" Version="3.4.1" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
+		<PackageReference Include="System.Memory" Version="4.5.5" />
 	</ItemGroup>
 
 </Project>

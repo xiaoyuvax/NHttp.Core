@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -56,29 +57,30 @@ namespace NHttp
             {
                 int boundaryOffset = -1;
 
-                for (int i = 0; i < toRead; i++)
-                {
-                    bool boundaryMatched = true;
+                // Use Span<byte> for more efficient boundary scanning
+                ReadOnlySpan<byte> bufferSpan = new ReadOnlySpan<byte>(_buffer, _offset, toRead);
+                ReadOnlySpan<byte> boundarySpan = new ReadOnlySpan<byte>(boundary);
 
-                    for (int j = 0; j < boundary.Length; j++)
+                for (int i = 0; i <= toRead - boundary.Length; i++)
+                {
+                    if (bufferSpan.Slice(i, boundary.Length).SequenceEqual(boundarySpan))
                     {
-                        if (i + j >= toRead)
+                        boundaryOffset = i;
+                        break;
+                    }
+                }
+
+                // Check for partial boundary match at the end
+                if (boundaryOffset == -1 && toRead > 0)
+                {
+                    int possibleMatchLength = Math.Min(boundary.Length - 1, toRead);
+                    for (int i = 1; i <= possibleMatchLength; i++)
+                    {
+                        if (bufferSpan.Slice(toRead - i, i).SequenceEqual(boundarySpan.Slice(0, i)))
                         {
                             partialBoundaryMatch = true;
                             break;
                         }
-
-                        if (_buffer[i + _offset + j] != boundary[j])
-                        {
-                            boundaryMatched = false;
-                            break;
-                        }
-                    }
-
-                    if (boundaryMatched)
-                    {
-                        boundaryOffset = i;
-                        break;
                     }
                 }
 
@@ -190,7 +192,7 @@ namespace NHttp
                 {
                     string line = _lineBuffer.ToString();
 
-                    _lineBuffer = new StringBuilder();
+                    _lineBuffer.Clear();
 
                     return line;
                 }

@@ -59,9 +59,10 @@ namespace NHttp
                 }
                 catch (AuthenticationException aex)
                 {
-                    //Suppress SSL_ERROR_SSL due to sslv3 was deprecated by OS.
+                    _logger.Warn("\tSSL authentication failed.", aex);
+                    throw;
                 }
-                catch (Exception ex) { _logger.Debug("\tSSLStream Creation Error.", ex); }
+                catch (Exception ex) { _logger.Error("\tSSLStream Creation Error.", ex); throw; }
         }
 
         private enum ClientState
@@ -276,6 +277,10 @@ namespace NHttp
                 if (!int.TryParse(contentLengthHeader, out int contentLength))
                     throw new ProtocolException(string.Format("Could not parse Content-Length header '{0}'", contentLengthHeader));
 
+                // Validate content size
+                if (contentLength > Server.MaxRequestContentSize)
+                    throw new ProtocolException(string.Format("Content length {0} exceeds maximum allowed size {1}", contentLength, Server.MaxRequestContentSize));
+
                 string contentTypeHeader;
                 string contentType = null;
                 string contentTypeExtra = null;
@@ -422,6 +427,7 @@ namespace NHttp
         private void ProcessHeaders()
         {
             string line;
+            int headersSize = 0;
 
             while ((line = ReadBuffer.ReadLine()) != null)
             {
@@ -441,6 +447,11 @@ namespace NHttp
 
                     return;
                 }
+
+                // Validate header size
+                headersSize += line.Length;
+                if (headersSize > Server.MaxRequestHeadersSize)
+                    throw new ProtocolException(string.Format("Request headers size {0} exceeds maximum allowed size {1}", headersSize, Server.MaxRequestHeadersSize));
 
                 string[] parts = line.Split(new[] { ':' }, 2);
 
@@ -466,6 +477,10 @@ namespace NHttp
             Method = match.Groups[1].Value;
             Request = match.Groups[2].Value;
             Protocol = match.Groups[3].Value;
+
+            // Validate URL length
+            if (Request.Length > Server.MaxRequestUrlLength)
+                throw new ProtocolException(string.Format("URL length {0} exceeds maximum allowed length {1}", Request.Length, Server.MaxRequestUrlLength));
 
             // Continue reading the headers.
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,15 +17,15 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void BasicUpload()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             {
                 server.RequestReceived += (s, e) =>
                 {
                     Assert.That(e.Request.Form.AllKeys, Is.EquivalentTo(new[] { "key" }));
-                    Assert.AreEqual("value", e.Request.Form["key"]);
-                    Assert.AreEqual("multipart/form-data", e.Request.ContentType);
-                    Assert.AreEqual("POST", e.Request.HttpMethod);
-                    Assert.IsNull(e.Request.InputStream);
+                    Assert.That(e.Request.Form["key"], Is.EqualTo("value"));
+                    Assert.That(e.Request.ContentType, Is.EqualTo("multipart/form-data"));
+                    Assert.That(e.Request.HttpMethod, Is.EqualTo("POST"));
+                    Assert.That(e.Request.InputStream, Is.Null);
                 };
 
                 server.Start();
@@ -46,7 +46,7 @@ namespace NHttp.Test.WebRequestFixtures
         [Test]
         public void BasicFileUpload()
         {
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             using (var uploadStream = new MemoryStream())
             {
                 WriteRandomData(uploadStream, UploadSize);
@@ -56,13 +56,13 @@ namespace NHttp.Test.WebRequestFixtures
                     uploadStream.Position = 0;
 
                     Assert.That(e.Request.Files.AllKeys, Is.EquivalentTo(new[] { "file" }));
-                    Assert.AreEqual(uploadStream, e.Request.Files["file"].InputStream);
-                    Assert.AreEqual("filename", e.Request.Files["file"].FileName);
-                    Assert.AreEqual("application/octet-stream", e.Request.Files["file"].ContentType);
-                    Assert.AreEqual(UploadSize, e.Request.Files["file"].ContentLength);
-                    Assert.AreEqual("multipart/form-data", e.Request.ContentType);
-                    Assert.AreEqual("POST", e.Request.HttpMethod);
-                    Assert.IsNull(e.Request.InputStream);
+                    Assert.That(e.Request.Files["file"].InputStream, Is.EqualTo(uploadStream));
+                    Assert.That(e.Request.Files["file"].FileName, Is.EqualTo("filename"));
+                    Assert.That(e.Request.Files["file"].ContentType, Is.EqualTo("application/octet-stream"));
+                    Assert.That(e.Request.Files["file"].ContentLength, Is.EqualTo(UploadSize));
+                    Assert.That(e.Request.ContentType, Is.EqualTo("multipart/form-data"));
+                    Assert.That(e.Request.HttpMethod, Is.EqualTo("POST"));
+                    Assert.That(e.Request.InputStream, Is.Null);
                 };
 
                 server.Start();
@@ -87,7 +87,7 @@ namespace NHttp.Test.WebRequestFixtures
         {
             var uploadData = Encoding.ASCII.GetBytes(new String('\r', UploadSize));
 
-            using (var server = new HttpServer())
+            using (var server = new HttpServer(Logger))
             using (var uploadStream = new MemoryStream(uploadData))
             {
                 server.RequestReceived += (s, e) =>
@@ -95,13 +95,13 @@ namespace NHttp.Test.WebRequestFixtures
                     uploadStream.Position = 0;
 
                     Assert.That(e.Request.Files.AllKeys, Is.EquivalentTo(new[] { "file" }));
-                    Assert.AreEqual(uploadStream, e.Request.Files["file"].InputStream);
-                    Assert.AreEqual("filename", e.Request.Files["file"].FileName);
-                    Assert.AreEqual("application/octet-stream", e.Request.Files["file"].ContentType);
-                    Assert.AreEqual(UploadSize, e.Request.Files["file"].ContentLength);
-                    Assert.AreEqual("multipart/form-data", e.Request.ContentType);
-                    Assert.AreEqual("POST", e.Request.HttpMethod);
-                    Assert.IsNull(e.Request.InputStream);
+                    Assert.That(e.Request.Files["file"].InputStream, Is.EqualTo(uploadStream));
+                    Assert.That(e.Request.Files["file"].FileName, Is.EqualTo("filename"));
+                    Assert.That(e.Request.Files["file"].ContentType, Is.EqualTo("application/octet-stream"));
+                    Assert.That(e.Request.Files["file"].ContentLength, Is.EqualTo(UploadSize));
+                    Assert.That(e.Request.ContentType, Is.EqualTo("multipart/form-data"));
+                    Assert.That(e.Request.HttpMethod, Is.EqualTo("POST"));
+                    Assert.That(e.Request.InputStream, Is.Null);
                 };
 
                 server.Start();
